@@ -10,7 +10,8 @@ change must keep it **generic** (no client data) and **safe** (see Security inva
 | ------------------- | --------------------------------------------------------------------------------- |
 | `npm run test:unit` | Pure rule-engine tests, ~1 s. Run after any change to `extension/core.js`.        |
 | `npm run test:e2e`  | Loads the extension in headless Chromium against throwaway local servers, ~1 min. |
-| `npm test`          | `check` + unit + e2e. Must pass before you say a change is done.                  |
+| `npm test`          | `check` + unit + e2e. Must pass before you say a change is done.
+| `npm run verify` | Same checks as `npm test`, one line per step and details only on failure. Prefer it in agent sessions. |                  |
 | `npm run check`     | Syntax and formatting checks; fails on private terms or personal paths.           |
 | `npm run package`   | Zips `extension/` into `dist/` for the Chrome Web Store.                          |
 | `npm run format`    | Formats everything with Prettier. Never hand-format.                              |

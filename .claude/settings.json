@@ -10,9 +10,19 @@
       "Bash(node --check:*)",
       "Bash(git status)",
       "Bash(git diff:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(npm run verify)",
+      "Bash(npm run verify:*)",
+      "Bash(npm run lint:quiet:*)",
+      "Bash(npx eslint:*)"
     ],
-    "deny": ["Read(./private/**)"]
+    "deny": [
+      "Read(./private/**)",
+      "Read(./package-lock.json)",
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./extension/icons/**)"
+    ]
   },
   "hooks": {
     "PostToolUse": [

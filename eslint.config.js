@@ -11,6 +11,8 @@ const readability = {
   'max-params': ['warn', 4],
   'max-lines-per-function': ['warn', { max: 60, skipBlankLines: true, skipComments: true }],
   complexity: ['warn', 12],
+    // Small files are easier to read and cheaper for coding agents to load.
+  'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
   curly: ['error', 'multi-line', 'consistent'],
   eqeqeq: ['error', 'always', { null: 'ignore' }],
   'prefer-const': 'error',

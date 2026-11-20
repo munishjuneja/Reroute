@@ -7,10 +7,12 @@ description: Run, write or debug Reroute's tests — unit tests for extension/co
 
 ## Run
 
-- `npm run test:unit` after any change to `extension/core.js` (about a second).
-- `npm run test:e2e` after any change to `background.js`, `page/`, `options.*`, `popup.*` or `manifest.json`.
-- One file: `node --test tests/e2e/security.test.mjs`. One test: add `--test-name-pattern="auto-off"`.
-- `npm test` before declaring work done.
+- Default: `npm run verify` — every check and test, one line per step, details only for failures.
+- Scoped: `npm run verify -- unit` (checks + unit, ~2 s) after `core.js` changes;
+  `npm run verify -- tests/e2e/security.test.mjs` for one file; `npm run verify -- e2e` for all e2e.
+- Long runs: delegate to the `test-runner` agent, which returns only failures.
+- Full TAP output (`npm test`, `node --test …`) only when the verify summary is not enough to diagnose.
+- One test: `node --test --test-name-pattern="auto-off" tests/e2e/security.test.mjs`.
 
 A failing run that hangs at the end usually means a server or browser was not closed: every `launch()` needs
 `h.close()` and every `serve()` needs `.close()` in `after()`.

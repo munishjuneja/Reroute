@@ -12,7 +12,9 @@
     "package": "node scripts/package.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "verify": "node scripts/verify.mjs",
+    "lint:quiet": "eslint --quiet --format unix"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
