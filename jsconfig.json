@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2023",
+    "moduleResolution": "Bundler",
+    "checkJs": false,
+    "lib": ["ES2023", "DOM", "WebWorker"]
+  },
+  "include": ["extension/**/*.js", "tests/**/*.mjs", "scripts/**/*.mjs"]
+}

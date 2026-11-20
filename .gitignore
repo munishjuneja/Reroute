@@ -15,3 +15,9 @@ __mocks__/
 *.zip
 node_modules/
 .DS_Store
+dist/
+# Personal rules, mock files and private terms never leave this machine.
+private/*
+!private/terms.txt.example
+!private/README.md
+

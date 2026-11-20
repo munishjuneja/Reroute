@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Switch to `npm ci` once package-lock.json is committed.
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      # Not blocking until the existing code is lint-clean (see CONTRIBUTING.md › Lint status).
+      - run: npm run lint
+        continue-on-error: true
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reroute-extension
+          path: dist/*.zip
