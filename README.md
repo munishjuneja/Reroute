@@ -105,3 +105,7 @@ click **Load from file…** and select all your mock files at once — each file
 - `background.js` — applies rules, injection, Full interception, activity log
 - `page/` — fetch/XHR hook (main world) and its bridge
 - `options.*`, `popup.*`, `ui.css` — rule manager and toolbar popup
+
+## License
+
+[MIT](LICENSE)

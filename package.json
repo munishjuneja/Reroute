@@ -3,6 +3,7 @@
   "version": "2.1.0",
   "private": true,
   "description": "Charles-style request rules that run entirely in Chrome.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "test": "npm run check && npm run test:unit && npm run test:e2e",
