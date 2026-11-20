@@ -24,35 +24,126 @@ const PAGE = `<!doctype html><title>site</title>
 before(async () => {
   site = await serve((req, res, u) => {
     if (u.pathname === '/') return send(res, 200, 'text/html', PAGE);
-    if (u.pathname === '/doc') return send(res, 200, 'text/html', '<title>remote</title>REMOTE DOC<script src="/app.js"></script>');
-    if (u.pathname.endsWith('.js')) return send(res, 200, 'text/javascript', `window.${u.pathname.slice(1, -3).toUpperCase()}="remote"`);
-    if (u.pathname === '/api/echo') return send(res, 200, 'application/json', JSON.stringify({ h: req.headers['x-test'] || null, q: u.search }));
+    if (u.pathname === '/doc')
+      return send(
+        res,
+        200,
+        'text/html',
+        '<title>remote</title>REMOTE DOC<script src="/app.js"></script>',
+      );
+    if (u.pathname.endsWith('.js'))
+      return send(
+        res,
+        200,
+        'text/javascript',
+        `window.${u.pathname.slice(1, -3).toUpperCase()}="remote"`,
+      );
+    if (u.pathname === '/api/echo')
+      return send(
+        res,
+        200,
+        'application/json',
+        JSON.stringify({ h: req.headers['x-test'] || null, q: u.search }),
+      );
     send(res, 200, 'text/plain', 'remote data');
   });
-  dev = await serve((req, res) => send(res, 200, 'text/javascript', 'window.APP="local"', { 'access-control-allow-origin': '*' }));
+  dev = await serve((req, res) =>
+    send(res, 200, 'text/javascript', 'window.APP="local"', { 'access-control-allow-origin': '*' }),
+  );
   R = site.url;
   h = await launch();
-  await h.setConfig(config([
-    rule({ name: 'remote', type: 'map-remote', match: R + '/app.js', dest: dev.url + '/app.js', cors: true }),
-    mock(R + '/api/user*', '{"name":"mock"}', { name: 'mock', response: { status: 201, headers: [{ name: 'X-A', value: 'b' }], delay: 30 } }),
-    rule({ name: 'rewrite-xhr', type: 'rewrite', match: R + '/api/xhr', actions: [{ kind: 'resp-body', name: 'remote', value: 'REWRITTEN' }, { kind: 'status', value: '202' }] }),
-    rule({ name: 'rewrite-fetch', type: 'rewrite', match: R + '/api/plain', actions: [{ kind: 'resp-body', name: 'r(e)mote', value: 'RX$1', regex: true }, { kind: 'status', value: '203' }] }),
-    rule({ name: 'local', type: 'map-local', match: R + '/lib.js', response: { status: 200, contentType: 'text/javascript', body: 'window.LIB="file"', fileName: 'lib.js', headers: [] } }),
-    rule({ name: 'block', type: 'block', match: R + '/blocked.js' }),
-    rule({ name: 'inject-js', type: 'inject', match: R + '/*', inject: { lang: 'js', runAt: 'document_start', code: 'window.INJ = 1;' } }),
-    rule({ name: 'inject-css', type: 'inject', match: R + '/*', inject: { lang: 'css', code: 'body{background:rgb(1, 2, 3)}' } }),
-    rule({ name: 'headers', type: 'rewrite', match: R + '/api/echo*', actions: [{ kind: 'req-header', name: 'X-Test', value: 'yes' }, { kind: 'query', name: 'added', value: '1' }, { kind: 'query', name: 'drop', value: '' }] }),
-    mock(R + '/graphql', '{"cart":"mocked"}', { name: 'gql', when: { gql: 'GetCart' } }),
-    mock(R + '/doc', '<title>local</title>LOCAL DOC<script src="/app.js"></script>', { name: 'doc', response: { contentType: 'text/html' } }),
-    rule({ name: 'bad-regex', type: 'block', regex: true, match: '(?=x)http://nope' }),
-  ]));
+  await h.setConfig(
+    config([
+      rule({
+        name: 'remote',
+        type: 'map-remote',
+        match: R + '/app.js',
+        dest: dev.url + '/app.js',
+        cors: true,
+      }),
+      mock(R + '/api/user*', '{"name":"mock"}', {
+        name: 'mock',
+        response: { status: 201, headers: [{ name: 'X-A', value: 'b' }], delay: 30 },
+      }),
+      rule({
+        name: 'rewrite-xhr',
+        type: 'rewrite',
+        match: R + '/api/xhr',
+        actions: [
+          { kind: 'resp-body', name: 'remote', value: 'REWRITTEN' },
+          { kind: 'status', value: '202' },
+        ],
+      }),
+      rule({
+        name: 'rewrite-fetch',
+        type: 'rewrite',
+        match: R + '/api/plain',
+        actions: [
+          { kind: 'resp-body', name: 'r(e)mote', value: 'RX$1', regex: true },
+          { kind: 'status', value: '203' },
+        ],
+      }),
+      rule({
+        name: 'local',
+        type: 'map-local',
+        match: R + '/lib.js',
+        response: {
+          status: 200,
+          contentType: 'text/javascript',
+          body: 'window.LIB="file"',
+          fileName: 'lib.js',
+          headers: [],
+        },
+      }),
+      rule({ name: 'block', type: 'block', match: R + '/blocked.js' }),
+      rule({
+        name: 'inject-js',
+        type: 'inject',
+        match: R + '/*',
+        inject: { lang: 'js', runAt: 'document_start', code: 'window.INJ = 1;' },
+      }),
+      rule({
+        name: 'inject-css',
+        type: 'inject',
+        match: R + '/*',
+        inject: { lang: 'css', code: 'body{background:rgb(1, 2, 3)}' },
+      }),
+      rule({
+        name: 'headers',
+        type: 'rewrite',
+        match: R + '/api/echo*',
+        actions: [
+          { kind: 'req-header', name: 'X-Test', value: 'yes' },
+          { kind: 'query', name: 'added', value: '1' },
+          { kind: 'query', name: 'drop', value: '' },
+        ],
+      }),
+      mock(R + '/graphql', '{"cart":"mocked"}', { name: 'gql', when: { gql: 'GetCart' } }),
+      mock(R + '/doc', '<title>local</title>LOCAL DOC<script src="/app.js"></script>', {
+        name: 'doc',
+        response: { contentType: 'text/html' },
+      }),
+      rule({ name: 'bad-regex', type: 'block', regex: true, match: '(?=x)http://nope' }),
+    ]),
+  );
 });
-after(async () => { await h?.close(); await site?.close(); await dev?.close(); });
+after(async () => {
+  await h?.close();
+  await site?.close();
+  await dev?.close();
+});
 
 async function loadSite(page) {
   await page.goto(R + '/');
   await page.evaluate(() => window.done);
-  return page.evaluate(() => ({ APP: window.APP, LIB: window.LIB, BLOCKED: window.BLOCKED, INJ: window.INJ, bg: getComputedStyle(document.body).backgroundColor, R: window.R }));
+  return page.evaluate(() => ({
+    APP: window.APP,
+    LIB: window.LIB,
+    BLOCKED: window.BLOCKED,
+    INJ: window.INJ,
+    bg: getComputedStyle(document.body).backgroundColor,
+    R: window.R,
+  }));
 }
 
 function assertAllRules(o) {
@@ -64,7 +155,11 @@ function assertAllRules(o) {
   assert.deepEqual(o.R.xhr, { status: 202, body: 'REWRITTEN data' });
   assert.deepEqual(o.R.plain.status, 203);
   assert.equal(o.R.plain.body, 'RXe data', 'regex replace with a capture group');
-  assert.deepEqual(o.R.echo, { h: 'yes', q: '?added=1' }, 'request header set, query param added and removed');
+  assert.deepEqual(
+    o.R.echo,
+    { h: 'yes', q: '?added=1' },
+    'request header set, query param added and removed',
+  );
   assert.equal(o.R.gql1, '{"cart":"mocked"}');
   assert.equal(o.R.gql2, 'remote data', 'other GraphQL operations pass through');
 }
@@ -109,6 +204,7 @@ test('Full interception serves a local document under the original URL and keeps
 
 test('the activity log records hits from every path', async () => {
   await sleep(400);
-  const via = new Set((await h.session('rrLog')).map(l => l.via));
-  for (const v of ['network', 'page', 'inject', 'full']) assert.ok(via.has(v), 'missing log entries via ' + v);
+  const via = new Set((await h.session('rrLog')).map((l) => l.via));
+  for (const v of ['network', 'page', 'inject', 'full'])
+    assert.ok(via.has(v), 'missing log entries via ' + v);
 });

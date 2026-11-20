@@ -17,22 +17,29 @@ A failing run that hangs at the end usually means a server or browser was not cl
 
 ## Where a new test goes
 
-| Change | Test |
-|---|---|
-| Matching, compilation, risk, redaction, import format | `tests/unit/core.test.mjs` |
-| What happens to real requests | `tests/e2e/rules.test.mjs` |
-| Keeping the original URL, cookies, chained hosts | `tests/e2e/full-interception.test.mjs` |
-| Leaks, permissions, import/export, auto-off | `tests/e2e/security.test.mjs` |
-| Rule manager and popup | `tests/e2e/ui.test.mjs` |
+| Change                                                | Test                                   |
+| ----------------------------------------------------- | -------------------------------------- |
+| Matching, compilation, risk, redaction, import format | `tests/unit/core.test.mjs`             |
+| What happens to real requests                         | `tests/e2e/rules.test.mjs`             |
+| Keeping the original URL, cookies, chained hosts      | `tests/e2e/full-interception.test.mjs` |
+| Leaks, permissions, import/export, auto-off           | `tests/e2e/security.test.mjs`          |
+| Rule manager and popup                                | `tests/e2e/ui.test.mjs`                |
 
 ## Writing an e2e test
 
 ```js
 import { launch, serve, send, rule, mock, config, sleep } from '../helpers.mjs';
 
-const site = await serve((req, res, u) => send(res, 200, 'text/html', '<script>window.done = fetch("/api").then(r => r.text()).then(t => window.T = t)</script>'));
-const h = await launch();                       // site access granted
-await h.setConfig(config([mock(site.url + '/api', '{"ok":1}')]));   // waits until applied
+const site = await serve((req, res, u) =>
+  send(
+    res,
+    200,
+    'text/html',
+    '<script>window.done = fetch("/api").then(r => r.text()).then(t => window.T = t)</script>',
+  ),
+);
+const h = await launch(); // site access granted
+await h.setConfig(config([mock(site.url + '/api', '{"ok":1}')])); // waits until applied
 const page = await h.ctx.newPage();
 await page.goto(site.url + '/');
 await page.evaluate(() => window.done);

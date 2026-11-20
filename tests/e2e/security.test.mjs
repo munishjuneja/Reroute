@@ -7,7 +7,9 @@ import path from 'node:path';
 import { launch, serve, send, rule, mock, config, sleep } from '../helpers.mjs';
 
 const open = [];
-after(async () => { for (const x of open) await x.close(); });
+after(async () => {
+  for (const x of open) await x.close();
+});
 
 // A page that records every event the extension could leak to it.
 const SPY = `<script>
@@ -18,8 +20,14 @@ const SPY = `<script>
 
 async function spySite() {
   const s = await serve((req, res, u) => {
-    if (u.pathname.startsWith('/api/')) return send(res, 200, 'application/json', '{"from":"server"}', { 'access-control-allow-origin': '*' });
-    if (u.pathname === '/lib.js') return send(res, 200, 'text/javascript', 'window.LIB="server"', { 'access-control-allow-origin': '*' });
+    if (u.pathname.startsWith('/api/'))
+      return send(res, 200, 'application/json', '{"from":"server"}', {
+        'access-control-allow-origin': '*',
+      });
+    if (u.pathname === '/lib.js')
+      return send(res, 200, 'text/javascript', 'window.LIB="server"', {
+        'access-control-allow-origin': '*',
+      });
     send(res, 200, 'text/html', SPY.replace('SCRIPT', s.url + '/lib.js'));
   });
   open.push(s);
@@ -27,17 +35,34 @@ async function spySite() {
 }
 
 test('pages never see the rule list, and only get mocks for their own site', async () => {
-  const s = await spySite(), h = await launch(); open.push(h);
-  const secretRules = when => config([
-    mock(s.url + '/api/profile', '{"token":"SECRET-1"}', { when }),
-    mock(s.url + '/api/other', '{"token":"OTHER-2"}'),
-    rule({ type: 'map-local', match: s.url + '/lib.js', response: { status: 200, contentType: 'text/javascript', body: 'window.LIB="file"', fileName: 'lib.js', headers: [] } }),
-  ]);
-  const visit = async origin => {
+  const s = await spySite(),
+    h = await launch();
+  open.push(h);
+  const secretRules = (when) =>
+    config([
+      mock(s.url + '/api/profile', '{"token":"SECRET-1"}', { when }),
+      mock(s.url + '/api/other', '{"token":"OTHER-2"}'),
+      rule({
+        type: 'map-local',
+        match: s.url + '/lib.js',
+        response: {
+          status: 200,
+          contentType: 'text/javascript',
+          body: 'window.LIB="file"',
+          fileName: 'lib.js',
+          headers: [],
+        },
+      }),
+    ]);
+  const visit = async (origin) => {
     const p = await h.ctx.newPage();
     await p.goto(origin + '/');
     await sleep(200);
-    const out = { got: await p.evaluate(u => window.probe(u), s.url + '/api/profile'), seen: await p.evaluate(() => SEEN.join(' | ')), lib: await p.evaluate(() => window.LIB) };
+    const out = {
+      got: await p.evaluate((u) => window.probe(u), s.url + '/api/profile'),
+      seen: await p.evaluate(() => SEEN.join(' | ')),
+      lib: await p.evaluate(() => window.LIB),
+    };
     await p.close();
     return out;
   };
@@ -46,7 +71,10 @@ test('pages never see the rule list, and only get mocks for their own site', asy
   const same = await visit(s.url);
   assert.equal(same.got, '{"token":"SECRET-1"}');
   assert.equal(same.lib, 'file');
-  assert.ok(!same.seen.includes('OTHER-2') && !same.seen.includes('/api/other'), 'other rules leaked to the page: ' + same.seen);
+  assert.ok(
+    !same.seen.includes('OTHER-2') && !same.seen.includes('/api/other'),
+    'other rules leaked to the page: ' + same.seen,
+  );
 
   const other = await visit(s.otherSite);
   assert.equal(other.got, '{"from":"server"}', 'a different site must not receive the mock');
@@ -54,17 +82,26 @@ test('pages never see the rule list, and only get mocks for their own site', asy
   assert.ok(!other.seen.includes('SECRET'), 'mock leaked: ' + other.seen);
 
   await h.setConfig(secretRules({ pageDomains: ['127.0.0.1'] }));
-  assert.equal((await visit(s.otherSite)).got, '{"token":"SECRET-1"}', 'a listed page domain opts in');
+  assert.equal(
+    (await visit(s.otherSite)).got,
+    '{"token":"SECRET-1"}',
+    'a listed page domain opts in',
+  );
 });
 
 test('without site access nothing applies and the user is told why', async () => {
-  const s = await spySite(), h = await launch({ siteAccess: false }); open.push(h);
+  const s = await spySite(),
+    h = await launch({ siteAccess: false });
+  open.push(h);
   await h.setConfig(config([mock(s.url + '/api/profile', '{"token":"SECRET-1"}')]));
   assert.deepEqual((await h.runtime()).needs, ['*://localhost/*']);
   assert.equal(await h.sw.evaluate(() => chrome.action.getBadgeText({})), '!');
   const p = await h.ctx.newPage();
   await p.goto(s.url + '/');
-  assert.equal(await p.evaluate(u => window.probe(u), s.url + '/api/profile'), '{"from":"server"}');
+  assert.equal(
+    await p.evaluate((u) => window.probe(u), s.url + '/api/profile'),
+    '{"from":"server"}',
+  );
   const opt = await h.extPage('options.html');
   await opt.waitForSelector('#perm:not([hidden])');
   assert.match(await opt.textContent('#permText'), /localhost/);
@@ -72,11 +109,18 @@ test('without site access nothing applies and the user is told why', async () =>
 });
 
 test('safe export strips bodies and secrets; full export keeps them', async () => {
-  const h = await launch(); open.push(h);
-  await h.setConfig(config([mock('https://api.app.example/me', '{"token":"SECRET-1"}', { response: { headers: [{ name: 'Set-Cookie', value: 'sid=abc' }] } })]));
+  const h = await launch();
+  open.push(h);
+  await h.setConfig(
+    config([
+      mock('https://api.app.example/me', '{"token":"SECRET-1"}', {
+        response: { headers: [{ name: 'Set-Cookie', value: 'sid=abc' }] },
+      }),
+    ]),
+  );
   const opt = await h.extPage('options.html');
   await opt.waitForSelector('.rule');
-  const exported = async button => {
+  const exported = async (button) => {
     await opt.click('#btnExport');
     const [d] = await Promise.all([opt.waitForEvent('download'), opt.click(button)]);
     return fs.readFileSync(await d.path(), 'utf8');
@@ -87,14 +131,35 @@ test('safe export strips bodies and secrets; full export keeps them', async () =
 });
 
 test('import preview lists risks and imports risky rules switched off', async () => {
-  const h = await launch(); open.push(h);
+  const h = await launch();
+  open.push(h);
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'rr-imp-')), 'shared.json');
-  fs.writeFileSync(file, JSON.stringify(config([
-    rule({ name: 'runs-script', type: 'inject', match: 'https://bank.example/*', inject: { lang: 'js', code: 'alert(1)' } }),
-    rule({ name: 'drops-csp', type: 'rewrite', match: 'https://bank.example/*', actions: [{ kind: 'resp-header', name: 'Content-Security-Policy', value: '' }] }),
-    rule({ name: 'elsewhere', type: 'map-remote', match: 'https://bank.example/app.js', dest: 'https://other.example/app.js' }),
-    rule({ name: 'plain', type: 'block', match: 'https://ads.example/*' }),
-  ])));
+  fs.writeFileSync(
+    file,
+    JSON.stringify(
+      config([
+        rule({
+          name: 'runs-script',
+          type: 'inject',
+          match: 'https://bank.example/*',
+          inject: { lang: 'js', code: 'alert(1)' },
+        }),
+        rule({
+          name: 'drops-csp',
+          type: 'rewrite',
+          match: 'https://bank.example/*',
+          actions: [{ kind: 'resp-header', name: 'Content-Security-Policy', value: '' }],
+        }),
+        rule({
+          name: 'elsewhere',
+          type: 'map-remote',
+          match: 'https://bank.example/app.js',
+          dest: 'https://other.example/app.js',
+        }),
+        rule({ name: 'plain', type: 'block', match: 'https://ads.example/*' }),
+      ]),
+    ),
+  );
   const opt = await h.extPage('options.html');
   await opt.waitForSelector('.rule');
   await opt.setInputFiles('#fileImport', file);
@@ -104,12 +169,16 @@ test('import preview lists risks and imports risky rules switched off', async ()
   assert.match(preview, /other\.example/);
   await opt.click('#impMerge');
   await sleep(300);
-  const state = Object.fromEntries((await h.stored()).rules.map(r => [r.name, r.enabled]));
-  assert.deepEqual([state['runs-script'], state['drops-csp'], state.elsewhere, state.plain], [false, false, true, true]);
+  const state = Object.fromEntries((await h.stored()).rules.map((r) => [r.name, r.enabled]));
+  assert.deepEqual(
+    [state['runs-script'], state['drops-csp'], state.elsewhere, state.plain],
+    [false, false, true, true],
+  );
 });
 
 test('auto-off switches everything off when the time is up', async () => {
-  const h = await launch(); open.push(h);
+  const h = await launch();
+  open.push(h);
   await h.setConfig(config([rule({ type: 'block', match: 'https://ads.example/*' })]));
   const pop = await h.extPage('popup.html');
   await pop.selectOption('#autoOff', '60');
@@ -122,13 +191,30 @@ test('auto-off switches everything off when the time is up', async () => {
     await chrome.storage.local.set({ rrSettings: s });
   });
   await sleep(3500);
-  assert.equal(await h.sw.evaluate(async () => (await chrome.storage.local.get('rrSettings')).rrSettings.masterEnabled), false);
-  assert.equal(await h.sw.evaluate(async () => (await chrome.declarativeNetRequest.getSessionRules()).length), 0);
+  assert.equal(
+    await h.sw.evaluate(
+      async () => (await chrome.storage.local.get('rrSettings')).rrSettings.masterEnabled,
+    ),
+    false,
+  );
+  assert.equal(
+    await h.sw.evaluate(async () => (await chrome.declarativeNetRequest.getSessionRules()).length),
+    0,
+  );
 });
 
 test('extension pages cannot make network requests', async () => {
-  const s = await spySite(), h = await launch(); open.push(h);
+  const s = await spySite(),
+    h = await launch();
+  open.push(h);
   const opt = await h.extPage('options.html');
-  const result = await opt.evaluate(u => fetch(u).then(() => 'reached', () => 'refused'), s.url + '/api/x');
+  const result = await opt.evaluate(
+    (u) =>
+      fetch(u).then(
+        () => 'reached',
+        () => 'refused',
+      ),
+    s.url + '/api/x',
+  );
   assert.equal(result, 'refused');
 });

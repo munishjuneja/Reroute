@@ -1,93 +1,124 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reroute rules</title>
-<link rel="stylesheet" href="ui.css">
-</head>
-<body>
-<div class="app">
-  <div>
-    <header>
-      <div class="brand"><img src="icons/48.png" alt="">Reroute</div>
-      <button class="sw" id="master" role="switch" aria-label="Enable Reroute"></button>
-      <span id="masterLbl" class="muted"></span>
-      <label for="profile" class="muted" style="margin-left:10px">Profile</label>
-      <select id="profile"></select>
-      <button class="ghost" id="pAdd" title="New profile" aria-label="New profile">＋</button>
-      <button class="ghost" id="pRename" title="Rename profile" aria-label="Rename profile">✎</button>
-      <button class="ghost danger" id="pDel" title="Delete profile" aria-label="Delete profile">🗑</button>
-      <span class="spacer"></span>
-      <div class="tabs" role="tablist">
-        <button role="tab" data-tab="rules">Rules</button>
-        <button role="tab" data-tab="test">Test a URL</button>
-        <button role="tab" data-tab="log">Activity</button>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reroute rules</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div>
+        <header>
+          <div class="brand"><img src="icons/48.png" alt="" />Reroute</div>
+          <button class="sw" id="master" role="switch" aria-label="Enable Reroute"></button>
+          <span id="masterLbl" class="muted"></span>
+          <label for="profile" class="muted" style="margin-left: 10px">Profile</label>
+          <select id="profile"></select>
+          <button class="ghost" id="pAdd" title="New profile" aria-label="New profile">＋</button>
+          <button class="ghost" id="pRename" title="Rename profile" aria-label="Rename profile">
+            ✎
+          </button>
+          <button class="ghost danger" id="pDel" title="Delete profile" aria-label="Delete profile">
+            🗑
+          </button>
+          <span class="spacer"></span>
+          <div class="tabs" role="tablist">
+            <button role="tab" data-tab="rules">Rules</button>
+            <button role="tab" data-tab="test">Test a URL</button>
+            <button role="tab" data-tab="log">Activity</button>
+          </div>
+          <button id="btnImport">Import</button>
+          <button id="btnExport">Export</button>
+          <input type="file" id="fileImport" accept=".json,application/json" hidden />
+          <input type="file" id="fileBody" multiple hidden />
+        </header>
+        <div class="banner" id="banner" hidden></div>
+        <div class="banner warn" id="perm" hidden>
+          <span id="permText"></span> <button id="permGrant">Grant access</button>
+          <button id="permAll">Allow on all sites</button>
+        </div>
       </div>
-      <button id="btnImport">Import</button>
-      <button id="btnExport">Export</button>
-      <input type="file" id="fileImport" accept=".json,application/json" hidden>
-      <input type="file" id="fileBody" multiple hidden>
-    </header>
-    <div class="banner" id="banner" hidden></div>
-    <div class="banner warn" id="perm" hidden><span id="permText"></span>
-      <button id="permGrant">Grant access</button> <button id="permAll">Allow on all sites</button></div>
-  </div>
 
-  <main id="tab-rules" class="rules">
-    <nav class="side" id="side" aria-label="Groups"></nav>
-    <section class="list" id="list" aria-label="Rules"></section>
-    <aside class="editor" id="editor" aria-label="Rule editor"></aside>
-  </main>
+      <main id="tab-rules" class="rules">
+        <nav class="side" id="side" aria-label="Groups"></nav>
+        <section class="list" id="list" aria-label="Rules"></section>
+        <aside class="editor" id="editor" aria-label="Rule editor"></aside>
+      </main>
 
-  <main id="tab-test" class="pane" hidden>
-    <h1 style="font-size:15px;margin:0 0 4px">Test a URL</h1>
-    <p class="muted" style="margin:0 0 10px">See which enabled rules in the active profile would fire, in priority order.</p>
-    <div class="row">
-      <input type="text" id="tUrl" class="mono" placeholder="https://www.example.com/assets/app.js" aria-label="URL to test">
-      <select id="tMethod" class="fit" aria-label="Method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>OPTIONS</option></select>
-      <select id="tType" class="fit" aria-label="Request type"></select>
+      <main id="tab-test" class="pane" hidden>
+        <h1 style="font-size: 15px; margin: 0 0 4px">Test a URL</h1>
+        <p class="muted" style="margin: 0 0 10px">
+          See which enabled rules in the active profile would fire, in priority order.
+        </p>
+        <div class="row">
+          <input
+            type="text"
+            id="tUrl"
+            class="mono"
+            placeholder="https://www.example.com/assets/app.js"
+            aria-label="URL to test"
+          />
+          <select id="tMethod" class="fit" aria-label="Method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+            <option>OPTIONS</option>
+          </select>
+          <select id="tType" class="fit" aria-label="Request type"></select>
+        </div>
+        <div id="tOut"></div>
+      </main>
+
+      <main id="tab-log" class="pane" hidden>
+        <div class="row" style="margin-bottom: 4px">
+          <h1 style="font-size: 15px; margin: 0">Recorded responses</h1>
+          <button class="fit" id="capClear">Clear</button>
+        </div>
+        <p class="muted" style="margin: 0 0 10px" id="capState"></p>
+        <div id="capOut" style="margin-bottom: 26px"></div>
+        <div class="row" style="margin-bottom: 8px">
+          <h1 style="font-size: 15px; margin: 0">Rule activity</h1>
+          <button class="fit" id="logClear">Clear</button>
+        </div>
+        <p class="muted" style="margin: 0 0 10px">
+          The latest 200 requests a rule acted on, newest first.
+        </p>
+        <div id="logOut"></div>
+      </main>
     </div>
-    <div id="tOut"></div>
-  </main>
 
-  <main id="tab-log" class="pane" hidden>
-    <div class="row" style="margin-bottom:4px">
-      <h1 style="font-size:15px;margin:0">Recorded responses</h1>
-      <button class="fit" id="capClear">Clear</button>
-    </div>
-    <p class="muted" style="margin:0 0 10px" id="capState"></p>
-    <div id="capOut" style="margin-bottom:26px"></div>
-    <div class="row" style="margin-bottom:8px">
-      <h1 style="font-size:15px;margin:0">Rule activity</h1>
-      <button class="fit" id="logClear">Clear</button>
-    </div>
-    <p class="muted" style="margin:0 0 10px">The latest 200 requests a rule acted on, newest first.</p>
-    <div id="logOut"></div>
-  </main>
-</div>
-
-<dialog id="dlgImport">
-  <h3>Import rules</h3>
-  <p id="dlgText" class="muted"></p>
-  <div id="dlgRisks"></div>
-  <label class="check" id="impTrustRow"><input type="checkbox" id="impTrust"> I wrote this file — keep those rules enabled</label>
-  <div class="foot">
-    <button class="primary" id="impMerge">Add to my rules</button>
-    <button class="danger" id="impReplace">Replace everything</button>
-    <button id="impCancel">Cancel</button>
-  </div>
-</dialog>
-<dialog id="dlgExport">
-  <h3>Export rules</h3>
-  <p class="muted">Mock bodies can hold tokens or personal data from recorded responses. Use the safe export for anything you share.</p>
-  <div class="foot">
-    <button class="primary" id="expSafe">Safe to share</button>
-    <button id="expFull">Everything (backup)</button>
-    <button id="expCancel">Cancel</button>
-  </div>
-  <p class="hint">Safe to share leaves out response bodies and masks Cookie, Authorization and API-key header values.</p>
-</dialog>
-<script type="module" src="options.js"></script>
-</body>
+    <dialog id="dlgImport">
+      <h3>Import rules</h3>
+      <p id="dlgText" class="muted"></p>
+      <div id="dlgRisks"></div>
+      <label class="check" id="impTrustRow"
+        ><input type="checkbox" id="impTrust" /> I wrote this file — keep those rules enabled</label
+      >
+      <div class="foot">
+        <button class="primary" id="impMerge">Add to my rules</button>
+        <button class="danger" id="impReplace">Replace everything</button>
+        <button id="impCancel">Cancel</button>
+      </div>
+    </dialog>
+    <dialog id="dlgExport">
+      <h3>Export rules</h3>
+      <p class="muted">
+        Mock bodies can hold tokens or personal data from recorded responses. Use the safe export
+        for anything you share.
+      </p>
+      <div class="foot">
+        <button class="primary" id="expSafe">Safe to share</button>
+        <button id="expFull">Everything (backup)</button>
+        <button id="expCancel">Cancel</button>
+      </div>
+      <p class="hint">
+        Safe to share leaves out response bodies and masks Cookie, Authorization and API-key header
+        values.
+      </p>
+    </dialog>
+    <script type="module" src="options.js"></script>
+  </body>
 </html>

@@ -22,13 +22,18 @@ export function walk(dir = ROOT, out = []) {
 export function privateTerms() {
   const f = path.join(ROOT, 'private', 'terms.txt');
   if (!fs.existsSync(f)) return null;
-  return fs.readFileSync(f, 'utf8').split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#'));
+  return fs
+    .readFileSync(f, 'utf8')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s && !s.startsWith('#'));
 }
 
 // Problems in one file's text: private terms and personal machine paths.
 export function genericProblems(text, terms) {
   const out = [];
-  for (const t of terms || []) if (text.toLowerCase().includes(t.toLowerCase())) out.push(`contains private term "${t}"`);
+  for (const t of terms || [])
+    if (text.toLowerCase().includes(t.toLowerCase())) out.push(`contains private term "${t}"`);
   const home = text.match(/(\/Users\/[\w.-]+|[A-Z]:\\\\?Users\\\\?[\w.-]+|\/home\/[\w.-]+)/);
   if (home) out.push(`contains a personal path "${home[0]}"`);
   return out;

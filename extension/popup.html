@@ -1,35 +1,103 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Reroute</title>
-<link rel="stylesheet" href="ui.css">
-<style>
-  html, body { height: auto; }
-  body { width: 340px; background: var(--panel); }
-  .top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
-  .top b { font-size: 14px; flex: 1; }
-  .sec { padding: 8px 12px; border-bottom: 1px solid var(--line); }
-  .line { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-  .line .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #rules { max-height: 300px; overflow: auto; }
-</style>
-</head>
-<body>
-  <div class="top"><b>Reroute</b><span id="masterLbl" class="muted"></span><button class="sw" id="master" role="switch" aria-label="Enable Reroute"></button></div>
-  <div class="sec note warn" id="needs" hidden style="margin:0;border-radius:0">Rules are not applied yet: Reroute needs site access. <button id="needsOpen">Review in rule manager</button></div>
-  <div class="sec">
-    <div class="line"><label for="profile" class="muted">Profile</label><select id="profile"></select></div>
-    <div class="line"><label for="autoOff" class="muted t">Switch off automatically</label><select id="autoOff" style="width:auto"><option value="0">Never</option><option value="60">After 1 hour</option><option value="240">After 4 hours</option><option value="480">After 8 hours</option></select></div>
-    <div class="hint" id="autoHint"></div>
-    <div class="line"><span class="t">Full interception on this tab</span><button class="sw" id="dbg" role="switch" aria-label="Full interception on this tab"></button></div>
-    <div class="hint" id="dbgHint">Serves local pages under the original URL and applies every rule to every request. Chrome shows a debugging banner while it is on.</div>
-    <div class="line"><span class="t">Record API responses</span><button class="sw" id="rec" role="switch" aria-label="Record API responses"></button></div>
-    <div class="hint" id="recHint">Captures fetch/XHR responses on tabs with Full interception, to save as mocks from Activity in the rule manager.</div>
-  </div>
-  <div class="sec muted" id="here" hidden></div>
-  <div class="sec" id="rules"></div>
-  <div class="sec" style="border:0"><button class="primary" id="open" style="width:100%">Open rule manager</button></div>
-  <script type="module" src="popup.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>Reroute</title>
+    <link rel="stylesheet" href="ui.css" />
+    <style>
+      html,
+      body {
+        height: auto;
+      }
+      body {
+        width: 340px;
+        background: var(--panel);
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .top b {
+        font-size: 14px;
+        flex: 1;
+      }
+      .sec {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+      }
+      .line .t {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #rules {
+        max-height: 300px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <b>Reroute</b><span id="masterLbl" class="muted"></span
+      ><button class="sw" id="master" role="switch" aria-label="Enable Reroute"></button>
+    </div>
+    <div class="sec note warn" id="needs" hidden style="margin: 0; border-radius: 0">
+      Rules are not applied yet: Reroute needs site access.
+      <button id="needsOpen">Review in rule manager</button>
+    </div>
+    <div class="sec">
+      <div class="line">
+        <label for="profile" class="muted">Profile</label
+        ><select id="profile"></select>
+      </div>
+      <div class="line">
+        <label for="autoOff" class="muted t">Switch off automatically</label
+        ><select id="autoOff" style="width: auto">
+          <option value="0">Never</option>
+          <option value="60">After 1 hour</option>
+          <option value="240">After 4 hours</option>
+          <option value="480">After 8 hours</option>
+        </select>
+      </div>
+      <div class="hint" id="autoHint"></div>
+      <div class="line">
+        <span class="t">Full interception on this tab</span
+        ><button
+          class="sw"
+          id="dbg"
+          role="switch"
+          aria-label="Full interception on this tab"
+        ></button>
+      </div>
+      <div class="hint" id="dbgHint">
+        Serves local pages under the original URL and applies every rule to every request. Chrome
+        shows a debugging banner while it is on.
+      </div>
+      <div class="line">
+        <span class="t">Record API responses</span
+        ><button class="sw" id="rec" role="switch" aria-label="Record API responses"></button>
+      </div>
+      <div class="hint" id="recHint">
+        Captures fetch/XHR responses on tabs with Full interception, to save as mocks from Activity
+        in the rule manager.
+      </div>
+    </div>
+    <div class="sec muted" id="here" hidden></div>
+    <div class="sec" id="rules"></div>
+    <div class="sec" style="border: 0">
+      <button class="primary" id="open" style="width: 100%">Open rule manager</button>
+    </div>
+    <script type="module" src="popup.js"></script>
+  </body>
 </html>

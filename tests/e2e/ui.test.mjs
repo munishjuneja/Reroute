@@ -13,27 +13,68 @@ const groups = [
 
 before(async () => {
   site = await serve((req, res, u) => {
-    if (u.pathname === '/api/stream') { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.write('data: 1\n\n'); return; }
-    if (u.pathname.startsWith('/api/')) return send(res, u.pathname.includes('fail') ? 500 : 200, 'application/json', JSON.stringify({ from: 'server', path: u.pathname + u.search }));
-    send(res, 200, 'text/html', `<body>site<script>
+    if (u.pathname === '/api/stream') {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      res.write('data: 1\n\n');
+      return;
+    }
+    if (u.pathname.startsWith('/api/'))
+      return send(
+        res,
+        u.pathname.includes('fail') ? 500 : 200,
+        'application/json',
+        JSON.stringify({ from: 'server', path: u.pathname + u.search }),
+      );
+    send(
+      res,
+      200,
+      'text/html',
+      `<body>site<script>
       window.go = () => Promise.all([
         fetch('/api/cart?x=1').then(r => r.json()),
         fetch('/api/fail').then(r => r.status),
         fetch('/api/gql', { method: 'POST', body: JSON.stringify({ operationName: 'GetCart', query: 'query GetCart { a }' }) }).then(r => r.json()),
       ]);
-    </script>`);
+    </script>`,
+    );
   });
   h = await launch();
-  await h.setConfig(config([
-    rule({ groupId: 'g1', name: 'one', type: 'map-remote', match: 'https://www.app.example/a', dest: 'http://localhost:3001/a' }),
-    rule({ groupId: 'g1', name: 'two', type: 'map-remote', match: 'https://www.app.example/b', dest: 'http://localhost:3001/b' }),
-    rule({ groupId: 'g2', name: 'assets', type: 'map-remote', match: 'https://www.app.example/static/*', dest: 'http://localhost:3001/static/*' }),
-    rule({ groupId: 'g3', name: 'block-site', type: 'block', match: site.url + '/nothing' }),
-  ], groups));
+  await h.setConfig(
+    config(
+      [
+        rule({
+          groupId: 'g1',
+          name: 'one',
+          type: 'map-remote',
+          match: 'https://www.app.example/a',
+          dest: 'http://localhost:3001/a',
+        }),
+        rule({
+          groupId: 'g1',
+          name: 'two',
+          type: 'map-remote',
+          match: 'https://www.app.example/b',
+          dest: 'http://localhost:3001/b',
+        }),
+        rule({
+          groupId: 'g2',
+          name: 'assets',
+          type: 'map-remote',
+          match: 'https://www.app.example/static/*',
+          dest: 'http://localhost:3001/static/*',
+        }),
+        rule({ groupId: 'g3', name: 'block-site', type: 'block', match: site.url + '/nothing' }),
+      ],
+      groups,
+    ),
+  );
 });
-after(async () => { await h?.close(); await site?.close(); });
+after(async () => {
+  await h?.close();
+  await site?.close();
+});
 
-const names = opt => opt.locator('.rule .nm').allTextContents();
+const names = (opt) => opt.locator('.rule .nm').allTextContents();
 
 test('creating a mock rule from the editor saves every field', async () => {
   const opt = await h.extPage('options.html');
@@ -49,7 +90,7 @@ test('creating a mock rule from the editor saves every field', async () => {
   await opt.fill('[data-f="when.methods"]', 'get, post');
   await opt.check('[data-rt=xmlhttprequest]');
   await sleep(500);
-  const r = (await h.stored()).rules.find(x => x.name === 'Made in the editor');
+  const r = (await h.stored()).rules.find((x) => x.name === 'Made in the editor');
   assert.equal(r.type, 'mock');
   assert.equal(r.response.body, '{"a":1}');
   assert.deepEqual(r.response.headers, [{ name: 'X-Y', value: '' }]);
@@ -63,16 +104,24 @@ test('drag and drop reorders rules, moves them between groups and reorders group
   const opt = await h.extPage('options.html');
   await opt.waitForSelector('.rule');
   assert.deepEqual((await names(opt)).slice(0, 2), ['one', 'two']);
-  await opt.locator('.rule').nth(1).dragTo(opt.locator('.rule').nth(0), { targetPosition: { x: 200, y: 4 } });
+  await opt
+    .locator('.rule')
+    .nth(1)
+    .dragTo(opt.locator('.rule').nth(0), { targetPosition: { x: 200, y: 4 } });
   assert.deepEqual((await names(opt)).slice(0, 2), ['two', 'one']);
 
   await opt.locator('.rule', { hasText: 'two' }).dragTo(opt.locator('.grp[data-gid=g3]'));
   await sleep(300);
-  assert.equal((await h.stored()).rules.find(r => r.name === 'two').groupId, 'g3');
+  assert.equal((await h.stored()).rules.find((r) => r.name === 'two').groupId, 'g3');
 
-  await opt.locator('.grp[data-gid=g3]').dragTo(opt.locator('.grp[data-gid=g1]'), { targetPosition: { x: 60, y: 3 } });
+  await opt
+    .locator('.grp[data-gid=g3]')
+    .dragTo(opt.locator('.grp[data-gid=g1]'), { targetPosition: { x: 60, y: 3 } });
   await sleep(300);
-  assert.deepEqual((await h.stored()).groups.map(g => g.name), ['Mocks', 'Pages', 'Assets']);
+  assert.deepEqual(
+    (await h.stored()).groups.map((g) => g.name),
+    ['Mocks', 'Pages', 'Assets'],
+  );
   assert.deepEqual(opt.errors, []);
   await opt.close();
 });
@@ -81,8 +130,14 @@ test('Test a URL shows the winning rule and its outcome', async () => {
   const opt = await h.extPage('options.html');
   await opt.click('[data-tab=test]');
   await opt.fill('#tUrl', 'https://www.app.example/static/js/app.js');
-  assert.match(await opt.textContent('#tOut'), /assets.*→ http:\/\/localhost:3001\/static\/js\/app\.js/s);
-  assert.ok(await opt.locator('#tab-rules').isHidden(), 'the rules pane must not show under the Test tab');
+  assert.match(
+    await opt.textContent('#tOut'),
+    /assets.*→ http:\/\/localhost:3001\/static\/js\/app\.js/s,
+  );
+  assert.ok(
+    await opt.locator('#tab-rules').isHidden(),
+    'the rules pane must not show under the Test tab',
+  );
   await opt.close();
 });
 
@@ -99,7 +154,9 @@ test('recording captures API responses and Save as mock replays them', async () 
   const opt = await h.extPage('options.html');
   await opt.click('[data-tab=log]');
   // Captures arrive as each response finishes; wait for all three.
-  await opt.waitForFunction(() => document.querySelectorAll('.caprow').length >= 3, null, { timeout: 10000 });
+  await opt.waitForFunction(() => document.querySelectorAll('.caprow').length >= 3, null, {
+    timeout: 10000,
+  });
   const rows = (await opt.locator('.caprow').allTextContents()).join(' | ');
   assert.match(rows, /GET 500/);
   assert.match(rows, /GetCart/);
@@ -129,10 +186,12 @@ test('recording passes never-ending streams through instead of holding them', as
   assert.equal(res.on, true);
   await page.bringToFront();
   await page.reload();
-  const status = await page.evaluate(() => Promise.race([
-    fetch('/api/stream').then(r => r.status),
-    new Promise(r => setTimeout(() => r('timed out'), 3000)),
-  ]));
+  const status = await page.evaluate(() =>
+    Promise.race([
+      fetch('/api/stream').then((r) => r.status),
+      new Promise((r) => setTimeout(() => r('timed out'), 3000)),
+    ]),
+  );
   assert.equal(status, 200);
   await h.message({ type: 'rr:rec-toggle', tabId: await h.tabId(site.url) });
   await page.close();
@@ -143,13 +202,16 @@ test('popup shows how many enabled rules can touch the current site', async () =
   await page.goto(site.url + '/');
   const pop = await h.ctx.newPage();
   // The popup reads the active tab; point it at the site tab.
-  await pop.addInitScript(u => {
+  await pop.addInitScript((u) => {
     const q = chrome.tabs.query.bind(chrome.tabs);
-    chrome.tabs.query = async () => (await q({})).filter(t => t.url?.startsWith(u));
+    chrome.tabs.query = async () => (await q({})).filter((t) => t.url?.startsWith(u));
   }, site.url);
   await pop.goto(`chrome-extension://${h.id}/popup.html`);
   await sleep(400);
-  assert.match(await pop.textContent('#here'), /^\d+ enabled rules? can change requests on localhost\.$/);
+  assert.match(
+    await pop.textContent('#here'),
+    /^\d+ enabled rules? can change requests on localhost\.$/,
+  );
   await pop.close();
   await page.close();
 });

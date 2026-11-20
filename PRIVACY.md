@@ -13,12 +13,12 @@ Reroute does not collect, transmit or sell any data.
 
 ## Permissions
 
-| Permission | Why it is needed |
-|---|---|
-| declarativeNetRequest (+Feedback) | Redirect, block and modify headers of matching requests; list which rules matched |
+| Permission                            | Why it is needed                                                                       |
+| ------------------------------------- | -------------------------------------------------------------------------------------- |
+| declarativeNetRequest (+Feedback)     | Redirect, block and modify headers of matching requests; list which rules matched      |
 | scripting, userScripts, webNavigation | The fetch/XHR hook for mocks, and running the JavaScript/CSS you write in Inject rules |
-| debugger | Full interception and recording, only on tabs where you switch it on |
-| storage, unlimitedStorage | Keep your rules and mock files |
-| alarms | The auto-off timer |
-| activeTab | Read the current tab's address for the popup |
-| Site access (optional) | Apply your rules on the sites they name |
+| debugger                              | Full interception and recording, only on tabs where you switch it on                   |
+| storage, unlimitedStorage             | Keep your rules and mock files                                                         |
+| alarms                                | The auto-off timer                                                                     |
+| activeTab                             | Read the current tab's address for the popup                                           |
+| Site access (optional)                | Apply your rules on the sites they name                                                |

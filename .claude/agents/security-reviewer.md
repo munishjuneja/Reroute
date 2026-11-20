@@ -16,6 +16,7 @@ For each invariant, trace the changed code paths end to end — for example, fol
 `npm run check` always.
 
 Report:
+
 - Findings, most severe first: file:line, what an attacker or reviewer would do, the consequence, a concrete fix.
 - Invariants you could not verify and why.
 - Tests that should exist but do not.

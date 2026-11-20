@@ -13,14 +13,14 @@ A few disabled example rules are created on first run.
 
 ## Rule types
 
-| Type | What it does | Works for |
-|---|---|---|
-| Map remote | Sends matching requests to another URL | Everything. A redirected *document* shows the new URL unless Full interception is on. |
-| Map local | Answers with a file stored in the extension | fetch/XHR, scripts, styles, images, fonts. Documents need Full interception. |
-| Mock response | Answers with a status, headers, body and delay you write | fetch/XHR. Other request types get the body only (status 200). |
-| Rewrite | Changes request/response headers, query params, status, body, or adds delay | Headers and query: everything. Status, body, delay: fetch/XHR. |
-| Block | Fails the request | Everything |
-| Inject | Runs your JavaScript or CSS on matching pages | Top-level pages |
+| Type          | What it does                                                                | Works for                                                                             |
+| ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Map remote    | Sends matching requests to another URL                                      | Everything. A redirected _document_ shows the new URL unless Full interception is on. |
+| Map local     | Answers with a file stored in the extension                                 | fetch/XHR, scripts, styles, images, fonts. Documents need Full interception.          |
+| Mock response | Answers with a status, headers, body and delay you write                    | fetch/XHR. Other request types get the body only (status 200).                        |
+| Rewrite       | Changes request/response headers, query params, status, body, or adds delay | Headers and query: everything. Status, body, delay: fetch/XHR.                        |
+| Block         | Fails the request                                                           | Everything                                                                            |
+| Inject        | Runs your JavaScript or CSS on matching pages                               | Top-level pages                                                                       |
 
 **Full interception** (toolbar popup, per tab) lifts every "fetch/XHR only" limit above and lets
 you serve a local page under the original URL. It uses `chrome.debugger`, so Chrome shows a

@@ -11,11 +11,16 @@ if (manifest.version !== pkg.version) {
   process.exit(1);
 }
 if (manifest.host_permissions?.length) {
-  console.error('manifest.json has host_permissions — site access must stay optional (optional_host_permissions).');
+  console.error(
+    'manifest.json has host_permissions — site access must stay optional (optional_host_permissions).',
+  );
   process.exit(1);
 }
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 const out = path.join(ROOT, 'dist', `reroute-${manifest.version}.zip`);
 fs.rmSync(out, { force: true });
-execFileSync('zip', ['-qr', '-X', out, '.', '-x', '.*'], { cwd: path.join(ROOT, 'extension'), stdio: 'inherit' });
+execFileSync('zip', ['-qr', '-X', out, '.', '-x', '.*'], {
+  cwd: path.join(ROOT, 'extension'),
+  stdio: 'inherit',
+});
 console.log('Built', path.relative(ROOT, out));

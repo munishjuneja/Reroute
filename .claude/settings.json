@@ -12,16 +12,17 @@
       "Bash(git diff:*)",
       "Bash(git log:*)"
     ],
-    "deny": [
-      "Read(./private/**)"
-    ]
+    "deny": ["Read(./private/**)"]
   },
   "hooks": {
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/after-edit.mjs\"" }
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/after-edit.mjs\""
+          }
         ]
       }
     ]
