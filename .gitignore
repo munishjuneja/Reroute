@@ -1,0 +1,17 @@
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# Mock data
+mocks/
+mock/
+__mocks__/
+*.mock.json
+*-mock.json
+*_mock.json
+
+# Build / OS cruft
+*.zip
+node_modules/
+.DS_Store
