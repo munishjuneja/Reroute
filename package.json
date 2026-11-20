@@ -1,6 +1,6 @@
 {
   "name": "reroute",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "description": "Charles-style request rules that run entirely in Chrome.",
   "license": "MIT",
