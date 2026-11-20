@@ -27,11 +27,12 @@
   };
 
   // Registrable-domain guess (no public suffix list): example.com, example.co.uk.
-  const site = (h) => {
-    const p = h.split('.');
-    if (p.length <= 2 || /^\d+$/.test(p[p.length - 1])) return h;
-    const n = p[p.length - 1].length === 2 && p[p.length - 2].length <= 3 ? 3 : 2;
-    return p.slice(-n).join('.');
+  const site = (hostname) => {
+    const labels = hostname.split('.');
+    if (labels.length <= 2 || /^\d+$/.test(labels[labels.length - 1])) return hostname;
+    const labelCount =
+      labels[labels.length - 1].length === 2 && labels[labels.length - 2].length <= 3 ? 3 : 2;
+    return labels.slice(-labelCount).join('.');
   };
   const gql = (op, body) => {
     if (!body || typeof body !== 'string') return false;

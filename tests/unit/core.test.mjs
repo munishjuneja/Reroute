@@ -64,9 +64,9 @@ test('page/bridge.js carries the same siteOf as core.js', () => {
   const body = (src) =>
     src
       .match(
-        /\{\s*const p = (String\()?h\)?\.split[\s\S]*?return p\.slice\(-n\)\.join\('\.'\);/,
+        /\{\s*const labels = (String\()?hostname\)?\.split[\s\S]*?return labels\.slice\(-labelCount\)\.join\('\.'\);/,
       )?.[0]
-      .replace(/String\((h)\)/g, '$1')
+      .replace(/String\((hostname)\)/g, '$1')
       .replace(/\s+/g, ' ');
   const core = body(fs.readFileSync(new URL('../../extension/core.js', import.meta.url), 'utf8'));
   const bridge = body(
