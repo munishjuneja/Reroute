@@ -719,7 +719,8 @@ function dataUrlPageDomains(rule) {
  * @returns {object | null} Null when a data: redirect cannot serve this response.
  */
 function dataUrlRedirect(rule, response) {
-  const status = Number(response.status) || DEFAULT_STATUS;
+  // Status 0 means "network failure", which a data: URL cannot simulate.
+  const status = pageStatus(response.status);
   const dataUrlTypes = allowedResourceTypes(rule).filter((type) =>
     DATA_URL_RESOURCE_TYPES.includes(type),
   );
@@ -1054,8 +1055,8 @@ export function compilePage(config, settings) {
  * @returns {string}
  */
 function describeMockResponse(response) {
-  if (response?.status === 0) return 'with a network error';
-  const status = Number(response?.status) || DEFAULT_STATUS;
+  const status = pageStatus(response?.status);
+  if (status === 0) return 'with a network error';
   return status + ' ' + (response?.contentType || DEFAULT_CONTENT_TYPE);
 }
 

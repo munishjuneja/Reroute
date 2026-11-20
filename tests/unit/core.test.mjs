@@ -305,3 +305,15 @@ test('armAutoOff sets and clears the deadline', () => {
   assert.equal(armAutoOff({ masterEnabled: false, autoOffMin: 60 }).autoOffAt, 0);
   assert.equal(armAutoOff({ masterEnabled: true, autoOffMin: 0 }).autoOffAt, 0);
 });
+
+test('a mock with status 0 fails instead of serving its body through a data: URL', () => {
+  const served = compileRule(mock('https://api.a.example/lib.js', 'x'));
+  assert.equal(served.dnr.length, 1, 'a 200 mock gets a data: redirect');
+
+  for (const status of [0, '0']) {
+    const failing = mock('https://api.a.example/lib.js', 'x', { response: { status } });
+    assert.deepEqual(compileRule(failing).dnr, []);
+    const [result] = testUrl(config([failing]), ON, { url: 'https://api.a.example/lib.js' });
+    assert.equal(result.outcome, 'Responds with a network error');
+  }
+});

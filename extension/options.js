@@ -173,7 +173,10 @@ function ruleRow(r, groupOn) {
     summary += ' → ' + esc(r.response.fileName);
   else if (r.type === 'mock')
     summary +=
-      ' → ' + (r.response?.status === 0 ? 'network error' : esc(Number(r.response?.status) || 200));
+      ' → ' +
+      ([0, '0'].includes(r.response?.status)
+        ? 'network error'
+        : esc(Number(r.response?.status) || 200));
   return `<div class="rule ${sel.rule === r.id ? 'sel' : ''} ${r.enabled && groupOn && settings.masterEnabled ? '' : 'off'}" draggable="true" data-drag="rule" data-id="${esc(r.id)}">
     <span class="grip" aria-hidden="true" title="Drag to reorder">⠿</span>${sw(r.enabled, 'r-toggle', r.id, 'Enable rule ' + (r.name || r.match))}
     <button class="body" data-act="rule" data-id="${esc(r.id)}">
