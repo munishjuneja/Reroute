@@ -21,6 +21,9 @@ All notable changes to this project are documented here. The format follows
 - Importing a rule with an unknown "Run at" value no longer stops every JavaScript inject rule from using
   user scripts.
 - Imported rules with an unknown type become map-remote rules, as intended.
+- Recording no longer holds back streamed responses or large downloads: it only reads bodies that are known to
+  end and are at most 1 MB, lists larger ones as "too large", and keeps the server's status text.
+- Only Reroute's own pages can switch Full interception or recording on, re-apply rules or clear Activity.
 
 ### Changed
 

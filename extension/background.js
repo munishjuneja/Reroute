@@ -26,6 +26,11 @@ const K = {
   caps: 'rrCaptures',
 };
 const dnr = chrome.declarativeNetRequest;
+// Recording reads response bodies only when they are known to end and to be small.
+const STREAMING_TYPE = /event-stream|ndjson|jsonl|stream\+json|multipart\/x-mixed-replace/;
+const FINITE_API_TYPE = /json|xml|graphql/;
+const TEXT_MIME = /^text\/|json|xml|javascript|graphql/i;
+const MAX_RECORDED_BODY_BYTES = 1_000_000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let cache = null; // { live, re, injects, idMap, userScripts }
@@ -33,7 +38,9 @@ let logBuf = null,
   logLoad = null,
   capLoad = null;
 let logTimer = null;
-const pending = new Map(); // debugger requestId -> response-stage actions
+// `${tabId}:${requestId}` -> what to do at the response stage. Fetch request ids are only unique per tab.
+const pending = new Map();
+const pendingKey = (tabId, requestId) => tabId + ':' + requestId;
 
 // ---------- state ----------
 
@@ -255,6 +262,7 @@ async function toggleDebugger(tabId) {
 
 chrome.debugger.onDetach.addListener(async (src) => {
   const tabs = await getDbg();
+  for (const key of pending.keys()) if (key.startsWith(src.tabId + ':')) pending.delete(key);
   if (src.tabId && tabs.includes(src.tabId)) {
     await setDbg(tabs.filter((t) => t !== src.tabId));
     if (tabs.length === 1) await setRec(false);
@@ -274,7 +282,8 @@ chrome.debugger.onEvent.addListener((src, method, p) => {
 async function onPaused(src, p) {
   const send = (m, a) => chrome.debugger.sendCommand(src, m, a);
   const requestId = p.requestId;
-  if (p.responseStatusCode !== undefined || p.responseErrorReason) return onResponse(send, p);
+  if (p.responseStatusCode !== undefined || p.responseErrorReason)
+    return onResponse(send, p, src.tabId);
 
   const c = await getCache();
   const req = p.request;
@@ -305,7 +314,7 @@ async function onPaused(src, p) {
   }
   if (!terminal && !rewrites.length) {
     if (!recReq) return send('Fetch.continueRequest', { requestId });
-    pending.set(requestId, { acts: [], rec: recReq });
+    pending.set(pendingKey(src.tabId, requestId), { acts: [], rec: recReq });
     return send('Fetch.continueRequest', { requestId, interceptResponse: true });
   }
   const hit = (r) => log({ ruleId: r.id, name: r.name, url, via: 'full', tabId: src.tabId });
@@ -335,14 +344,14 @@ async function onPaused(src, p) {
         },
       );
     }
-    if (recReq)
-      recordCapture(
-        recReq,
-        Number(r.status) || 200,
-        r.contentType || 'text/plain',
-        r.body || '',
-        !!r.base64,
-      );
+    if (recReq) {
+      recordCapture(recReq, {
+        status: Number(r.status) || 200,
+        mime: r.contentType || 'text/plain',
+        body: r.body || '',
+        base64: !!r.base64,
+      });
+    }
     return send('Fetch.fulfillRequest', {
       requestId,
       responseCode: Number(r.status) || 200,
@@ -392,7 +401,7 @@ async function onPaused(src, p) {
   }
   const respActs = acts.filter((a) => ['resp-header', 'resp-body', 'status'].includes(a.kind));
   if (respActs.length || recReq) {
-    pending.set(requestId, { acts: respActs, rec: recReq });
+    pending.set(pendingKey(src.tabId, requestId), { acts: respActs, rec: recReq });
     args.interceptResponse = true;
   }
   const delay = Math.max(
@@ -417,23 +426,56 @@ function replaceBody(text, acts) {
   return text;
 }
 
-async function onResponse(send, p) {
+/**
+ * Reads one header from a CDP header list.
+ *
+ * @param {{ name: string, value: string }[]} headers
+ * @param {string} name Lower-case header name.
+ * @returns {string | undefined}
+ */
+const headerValue = (headers, name) => headers.find((h) => h.name.toLowerCase() === name)?.value;
+
+/**
+ * Decides whether recording may read a response body. Fetch.getResponseBody waits for the whole body,
+ * so streams would hang the page and large downloads would be buffered in full.
+ *
+ * @param {{ name: string, value: string }[]} responseHeaders
+ * @returns {'record' | 'too-large' | 'skip'}
+ */
+function recordingPlan(responseHeaders) {
+  const contentType = (headerValue(responseHeaders, 'content-type') || '').toLowerCase();
+  if (STREAMING_TYPE.test(contentType)) return 'skip';
+  const contentLength = headerValue(responseHeaders, 'content-length');
+  if (contentLength === undefined) return FINITE_API_TYPE.test(contentType) ? 'record' : 'skip';
+  return Number(contentLength) > MAX_RECORDED_BODY_BYTES ? 'too-large' : 'record';
+}
+
+/**
+ * Handles a request paused at the response stage: applies response rewrites and records the body.
+ *
+ * @param {(method: string, params: object) => Promise<any>} send Sends a CDP command to the tab.
+ * @param {object} p Fetch.requestPaused event parameters.
+ * @param {number} tabId
+ * @returns {Promise<unknown>}
+ */
+async function onResponse(send, p, tabId) {
   const requestId = p.requestId;
-  let { acts = [], rec: recReq = null } = pending.get(requestId) || {};
-  pending.delete(requestId);
-  const ctype = (
-    (p.responseHeaders || []).find((h) => h.name.toLowerCase() === 'content-type')?.value || ''
-  ).toLowerCase();
-  // Streams may never end, and getResponseBody waits for the whole body: pass them through unrecorded.
-  if (/event-stream|ndjson|multipart\/x-mixed-replace/.test(ctype)) recReq = null;
-  if ((!acts.length && !recReq) || p.responseErrorReason)
-    return send('Fetch.continueRequest', { requestId });
+  const key = pendingKey(tabId, requestId);
+  let { acts = [], rec: recReq = null } = pending.get(key) || {};
+  pending.delete(key);
+  if (p.responseErrorReason) return send('Fetch.continueRequest', { requestId });
   let headers = (p.responseHeaders || []).slice();
   for (const a of acts)
     if (a.kind === 'resp-header' && a.name) headers = setHdr(headers, a.name, a.value);
   const st = acts.filter((a) => a.kind === 'status' && Number(a.value)).pop();
   const bodyActs = acts.filter((a) => a.kind === 'resp-body');
   const code = p.responseStatusCode;
+  const status = st ? Number(st.value) : code;
+  const mime = (headerValue(headers, 'content-type') || '').split(';')[0].trim();
+  const plan = recReq ? recordingPlan(p.responseHeaders || []) : 'skip';
+  if (plan === 'too-large') recordCapture(recReq, { status, mime, body: '', tooLarge: true });
+  if (plan !== 'record') recReq = null;
+  if (!acts.length && !recReq) return send('Fetch.continueRequest', { requestId });
   const noBody = (code >= 300 && code < 400) || code === 204;
   if (noBody || (!bodyActs.length && !st && !recReq)) {
     return send('Fetch.continueResponse', {
@@ -443,30 +485,39 @@ async function onResponse(send, p) {
     });
   }
   const got = await send('Fetch.getResponseBody', { requestId });
-  const status = st ? Number(st.value) : code;
   let body = got.body,
     text = null;
   if (bodyActs.length) {
     text = replaceBody(got.base64Encoded ? b64ToUtf8(got.body) : got.body, bodyActs);
     body = utf8ToB64(text);
   } else if (!got.base64Encoded) body = utf8ToB64(got.body);
-  if (recReq) {
-    const mime = (headers.find((h) => h.name.toLowerCase() === 'content-type')?.value || '')
-      .split(';')[0]
-      .trim();
-    if (text !== null) recordCapture(recReq, status, mime, text, false);
-    else if (got.base64Encoded && /^text\/|json|xml|javascript|graphql/i.test(mime))
-      recordCapture(recReq, status, mime, b64ToUtf8(got.body || ''), false);
-    else recordCapture(recReq, status, mime, got.body || '', !!got.base64Encoded);
-  }
+  if (recReq) recordCapture(recReq, capturedBody({ got, text, mime, status }));
   // getResponseBody returns the decoded body, so the original length and encoding no longer apply.
   headers = setHdr(setHdr(headers, 'content-length', ''), 'content-encoding', '');
   return send('Fetch.fulfillRequest', {
     requestId,
     responseCode: status,
+    // Keep the server's status text unless a rewrite changed the status.
+    responsePhrase: st ? undefined : p.responseStatusText,
     responseHeaders: headers,
     body,
   });
+}
+
+/**
+ * Builds what recording stores for a body read at the response stage. Text is stored as text, so
+ * "Save as mock" gives an editable body; Fetch returns base64 even for text.
+ *
+ * @param {{ got: { body: string, base64Encoded: boolean }, text: string | null, mime: string,
+ *   status: number }} response
+ * @returns {{ status: number, mime: string, body: string, base64: boolean }}
+ */
+function capturedBody({ got, text, mime, status }) {
+  if (text !== null) return { status, mime, body: text, base64: false };
+  if (got.base64Encoded && TEXT_MIME.test(mime)) {
+    return { status, mime, body: b64ToUtf8(got.body || ''), base64: false };
+  }
+  return { status, mime, body: got.body || '', base64: !!got.base64Encoded };
 }
 
 // ---------- recording (needs Full interception on the tab) ----------
@@ -495,25 +546,32 @@ async function addCapture(c) {
   capTimer = setTimeout(() => chrome.storage.session.set({ [K.caps]: capBuf }), 250);
 }
 
-function recordCapture(r, status, mime, body, base64) {
-  const tooLarge = body.length > 1_000_000;
+/**
+ * Adds a recorded response to the Activity list.
+ *
+ * @param {{ tabId: number, url: string, method: string, postData: string }} request
+ * @param {{ status: number, mime: string, body: string, base64?: boolean, tooLarge?: boolean }} response
+ * @returns {void}
+ */
+function recordCapture(request, response) {
+  const tooLarge = !!response.tooLarge || response.body.length > MAX_RECORDED_BODY_BYTES;
   let gql = '';
   try {
-    const j = JSON.parse(r.postData);
-    gql = (Array.isArray(j) ? j[0] : j)?.operationName || '';
+    const parsed = JSON.parse(request.postData);
+    gql = (Array.isArray(parsed) ? parsed[0] : parsed)?.operationName || '';
   } catch {
     /* not GraphQL */
   }
   addCapture({
     id: uid('c'),
     t: Date.now(),
-    tabId: r.tabId,
-    url: r.url,
-    method: r.method,
-    status,
-    mime,
-    body: tooLarge ? '' : body,
-    base64,
+    tabId: request.tabId,
+    url: request.url,
+    method: request.method,
+    status: response.status,
+    mime: response.mime,
+    body: tooLarge ? '' : response.body,
+    base64: !!response.base64,
     tooLarge,
     gql,
   }).catch(() => {});
@@ -537,7 +595,12 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (msg.type === 'rr:hit') {
     if (!sender.tab) return; // only our own content script reports hits
     log({ ruleId: msg.id, name: msg.name, url: msg.url, via: 'page', tabId: sender.tab?.id });
-  } else if (msg.type === 'rr:apply') {
+    return;
+  }
+  // Security: everything else attaches the debugger, records responses or changes state, so only
+  // Reroute's own pages may ask. Content scripts run on web pages and report their URL instead.
+  if (!sender.url?.startsWith(chrome.runtime.getURL(''))) return;
+  if (msg.type === 'rr:apply') {
     apply().then((n) => respond({ count: n }));
     return true;
   } else if (msg.type === 'rr:dbg-toggle') {

@@ -18,6 +18,12 @@ before(async () => {
       res.write('data: 1\n\n');
       return;
     }
+    // Chunked plain text with no length, like a streamed LLM answer. Never ends.
+    if (u.pathname === '/api/text-stream') {
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.write('partial answer');
+      return;
+    }
     if (u.pathname.startsWith('/api/'))
       return send(
         res,
@@ -179,20 +185,29 @@ test('recording captures API responses and Save as mock replays them', async () 
   await page.close();
 });
 
-test('recording passes never-ending streams through instead of holding them', async () => {
+test('recording passes streams through and keeps the status text', async () => {
   const page = await h.ctx.newPage();
   await page.goto(site.url + '/');
   const res = await h.message({ type: 'rr:rec-toggle', tabId: await h.tabId(site.url) });
   assert.equal(res.on, true);
   await page.bringToFront();
   await page.reload();
-  const status = await page.evaluate(() =>
-    Promise.race([
-      fetch('/api/stream').then((r) => r.status),
-      new Promise((r) => setTimeout(() => r('timed out'), 3000)),
-    ]),
+  const statusOf = (path) =>
+    page.evaluate(
+      (url) =>
+        Promise.race([
+          fetch(url).then((r) => r.status),
+          new Promise((r) => setTimeout(() => r('timed out'), 3000)),
+        ]),
+      path,
+    );
+
+  assert.equal(await statusOf('/api/stream'), 200);
+  assert.equal(await statusOf('/api/text-stream'), 200);
+  assert.equal(
+    await page.evaluate(() => fetch('/api/fail').then((r) => r.statusText)),
+    'Internal Server Error',
   );
-  assert.equal(status, 200);
   await h.message({ type: 'rr:rec-toggle', tabId: await h.tabId(site.url) });
   await page.close();
 });
