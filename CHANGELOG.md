@@ -14,10 +14,17 @@ All notable changes to this project are documented here. The format follows
 
 - Recording now captures responses whose body the page never reads, such as error responses where only the
   status is checked.
+- A mock with status 0 now fails for scripts, styles and images too, instead of serving its body. The rule list
+  and the URL tester describe it as a network error.
+- Importing a rule with an unknown "Run at" value no longer stops every JavaScript inject rule from using
+  user scripts.
+- Imported rules with an unknown type become map-remote rules, as intended.
 
 ### Changed
 
 - Code formatted with Prettier.
+- Reroute no longer asks for the `declarativeNetRequestFeedback` permission. It only worked in unpacked builds,
+  so Activity no longer lists redirect, header and block hits there.
 
 ## [2.1.0]
 
