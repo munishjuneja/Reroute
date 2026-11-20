@@ -78,6 +78,7 @@ const DATA_URL_RESOURCE_TYPES = [
 const DNR_METHODS = ['connect', 'delete', 'get', 'head', 'options', 'patch', 'post', 'put'];
 const PAGE_ACTION_KINDS = ['resp-body', 'status', 'delay'];
 const NON_TERMINAL_TYPES = ['rewrite', 'inject'];
+const RUN_AT_VALUES = ['document_start', 'document_end', 'document_idle'];
 const MAX_DATA_URL_BASE64_LENGTH = 1_500_000;
 const BASE64_CHUNK_BYTES = 0x8000;
 const DEFAULT_STATUS = 200;
@@ -1297,7 +1298,8 @@ function normalizeResponse(response) {
 function normalizeInject(inject) {
   return {
     lang: inject.lang === 'css' ? 'css' : 'js',
-    runAt: inject.runAt || 'document_idle',
+    // Chrome rejects the whole userScripts registration on one unknown runAt value.
+    runAt: RUN_AT_VALUES.includes(inject.runAt) ? inject.runAt : 'document_idle',
     code: inject.code || '',
   };
 }

@@ -317,3 +317,14 @@ test('a mock with status 0 fails instead of serving its body through a data: URL
     assert.equal(result.outcome, 'Responds with a network error');
   }
 });
+
+test('normalizeConfig replaces an unknown inject runAt so other inject rules keep working', () => {
+  const inject = (runAt) => ({
+    type: 'inject',
+    match: 'https://a.example/*',
+    inject: { code: 'x', runAt },
+  });
+  const { rules } = normalizeConfig({ rules: [inject('whenever'), inject('document_start')] });
+  assert.equal(rules[0].inject.runAt, 'document_idle');
+  assert.equal(rules[1].inject.runAt, 'document_start');
+});
