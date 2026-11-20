@@ -205,6 +205,5 @@ test('Full interception serves a local document under the original URL and keeps
 test('the activity log records hits from every path', async () => {
   await sleep(400);
   const via = new Set((await h.session('rrLog')).map((l) => l.via));
-  for (const v of ['network', 'page', 'inject', 'full'])
-    assert.ok(via.has(v), 'missing log entries via ' + v);
+  for (const v of ['page', 'inject', 'full']) assert.ok(via.has(v), 'missing log entries via ' + v);
 });

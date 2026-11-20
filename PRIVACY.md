@@ -15,7 +15,7 @@ Reroute does not collect, transmit or sell any data.
 
 | Permission                            | Why it is needed                                                                       |
 | ------------------------------------- | -------------------------------------------------------------------------------------- |
-| declarativeNetRequest (+Feedback)     | Redirect, block and modify headers of matching requests; list which rules matched      |
+| declarativeNetRequest                 | Redirect, block and modify headers of matching requests                                |
 | scripting, userScripts, webNavigation | The fetch/XHR hook for mocks, and running the JavaScript/CSS you write in Inject rules |
 | debugger                              | Full interception and recording, only on tabs where you switch it on                   |
 | storage, unlimitedStorage             | Keep your rules and mock files                                                         |

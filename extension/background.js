@@ -543,21 +543,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes[K.config] || changes[K.settings])) apply();
 });
 
-// Unpacked builds get a per-request callback for redirect/header/block rules.
-dnr.onRuleMatchedDebug?.addListener(async (info) => {
-  if (info.rule.rulesetId !== '_session') return;
-  const c = await getCache();
-  const m = c.idMap[info.rule.ruleId];
-  if (m)
-    log({
-      ruleId: m.ruleId,
-      name: m.name,
-      url: info.request.url,
-      via: 'network',
-      tabId: info.request.tabId,
-    });
-});
-
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   if (!msg || typeof msg.type !== 'string') return;
   if (msg.type === 'rr:hit') {
