@@ -18,6 +18,13 @@ before(async () => {
       res.write('data: 1\n\n');
       return;
     }
+    // Chunked JSON with no length, as compressed API responses usually arrive.
+    if (u.pathname === '/api/json-chunked') {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.write('{"from":');
+      res.end('"chunked"}');
+      return;
+    }
     // Chunked plain text with no length, like a streamed LLM answer. Never ends.
     if (u.pathname === '/api/text-stream') {
       res.writeHead(200, { 'content-type': 'text/plain' });
@@ -204,6 +211,13 @@ test('recording passes streams through and keeps the status text', async () => {
 
   assert.equal(await statusOf('/api/stream'), 200);
   assert.equal(await statusOf('/api/text-stream'), 200);
+
+  assert.deepEqual(await page.evaluate(() => fetch('/api/json-chunked').then((r) => r.json())), {
+    from: 'chunked',
+  });
+  await sleep(600);
+  const captured = (await h.session('rrCaptures')).find((c) => c.url.endsWith('/api/json-chunked'));
+  assert.equal(captured?.body, '{"from":"chunked"}', 'a chunked JSON response is still recorded');
   assert.equal(
     await page.evaluate(() => fetch('/api/fail').then((r) => r.statusText)),
     'Internal Server Error',

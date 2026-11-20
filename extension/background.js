@@ -447,7 +447,9 @@ function recordingPlan(responseHeaders) {
   if (STREAMING_TYPE.test(contentType)) return 'skip';
   const contentLength = headerValue(responseHeaders, 'content-length');
   if (contentLength === undefined) return FINITE_API_TYPE.test(contentType) ? 'record' : 'skip';
-  return Number(contentLength) > MAX_RECORDED_BODY_BYTES ? 'too-large' : 'record';
+  const declaredBytes = Number(contentLength);
+  if (!Number.isFinite(declaredBytes)) return 'skip';
+  return declaredBytes > MAX_RECORDED_BODY_BYTES ? 'too-large' : 'record';
 }
 
 /**
@@ -472,7 +474,8 @@ async function onResponse(send, p, tabId) {
   const code = p.responseStatusCode;
   const status = st ? Number(st.value) : code;
   const mime = (headerValue(headers, 'content-type') || '').split(';')[0].trim();
-  const plan = recReq ? recordingPlan(p.responseHeaders || []) : 'skip';
+  // Recording may have been switched off since the request was sent.
+  const plan = recReq && (await isRec()) ? recordingPlan(p.responseHeaders || []) : 'skip';
   if (plan === 'too-large') recordCapture(recReq, { status, mime, body: '', tooLarge: true });
   if (plan !== 'record') recReq = null;
   if (!acts.length && !recReq) return send('Fetch.continueRequest', { requestId });
