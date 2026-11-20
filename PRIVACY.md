@@ -7,7 +7,8 @@ Reroute does not collect, transmit or sell any data.
 - Recorded responses are kept in memory for the browser session only and are discarded when the browser closes,
   unless you save one as a mock rule.
 - Site access is requested per site, only for the sites your enabled rules name, and can be revoked at any time
-  from the browser's extension settings.
+  from the browser's extension settings. A rule that is not tied to one site asks for access to all sites; the rule
+  manager names that rule and explains how to narrow it.
 - Exported rule files are created on your device. The "Safe to share" export removes response bodies and masks
   common secret headers; the full export does not.
 

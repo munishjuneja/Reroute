@@ -7,11 +7,7 @@ the extension actually does: the store compares them.
 
 **Name:** Reroute (from the manifest)
 
-**Summary** (the manifest `description`, max 132 characters). Current:
-
-> Map remote, map local, mock, rewrite, block and inject — Charles-style request rules that run entirely in Chrome.
-
-Suggested, without naming another product (110 characters):
+**Summary** (the manifest `description`, max 132 characters, 110 used):
 
 > Map remote, map local, mock, rewrite, block and inject — request rules for web developers, entirely in Chrome.
 

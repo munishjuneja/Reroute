@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Reroute",
   "version": "2.1.1",
-  "description": "Map remote, map local, mock, rewrite, block and inject \u2014 Charles-style request rules that run entirely in Chrome.",
+  "description": "Map remote, map local, mock, rewrite, block and inject \u2014 request rules for web developers, entirely in Chrome.",
   "minimum_chrome_version": "122",
   "permissions": [
     "declarativeNetRequest",
