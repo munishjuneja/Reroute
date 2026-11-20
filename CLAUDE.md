@@ -11,7 +11,6 @@
   or personal paths. If it blocks an edit, fix the file — do not work around the hook.
 - Never read, quote or copy anything from `private/` into other files, commits or PR text.
 
-
 ## Using tokens economically
 
 - Verify with `npm run verify` (one line per step, details only on failure), not `npm test`. Scope it:

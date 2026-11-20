@@ -6,16 +6,16 @@ change must keep it **generic** (no client data) and **safe** (see Security inva
 
 ## Commands
 
-| Command             | What it does                                                                      |
-| ------------------- | --------------------------------------------------------------------------------- |
-| `npm run test:unit` | Pure rule-engine tests, ~1 s. Run after any change to `extension/core.js`.        |
-| `npm run test:e2e`  | Loads the extension in headless Chromium against throwaway local servers, ~1 min. |
-| `npm test`          | `check` + unit + e2e. Must pass before you say a change is done.
-| `npm run verify` | Same checks as `npm test`, one line per step and details only on failure. Prefer it in agent sessions. |                  |
-| `npm run check`     | Syntax and formatting checks; fails on private terms or personal paths.           |
-| `npm run package`   | Zips `extension/` into `dist/` for the Chrome Web Store.                          |
-| `npm run format`    | Formats everything with Prettier. Never hand-format.                              |
-| `npm run lint`      | ESLint with naming, complexity and JSDoc rules. `npx eslint <file>` for one file. |
+| Command             | What it does                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `npm run test:unit` | Pure rule-engine tests, ~1 s. Run after any change to `extension/core.js`.                             |
+| `npm run test:e2e`  | Loads the extension in headless Chromium against throwaway local servers, ~1 min.                      |
+| `npm test`          | `check` + unit + e2e. Must pass before you say a change is done.                                       |
+| `npm run verify`    | Same checks as `npm test`, one line per step and details only on failure. Prefer it in agent sessions. |
+| `npm run check`     | Syntax and formatting checks; fails on private terms or personal paths.                                |
+| `npm run package`   | Zips `extension/` into `dist/` for the Chrome Web Store.                                               |
+| `npm run format`    | Formats everything with Prettier. Never hand-format.                                                   |
+| `npm run lint`      | ESLint with naming, complexity and JSDoc rules. `npx eslint <file>` for one file.                      |
 
 Setup on a new machine: `npm install && npx playwright install chromium`. There is no build step: the files in
 `extension/` are what Chrome loads (`chrome://extensions` → Load unpacked → `extension/`).
@@ -113,8 +113,9 @@ Code must be understandable by someone new to the project without running it. Fu
   which is how cross-site behaviour is tested.
 - `launch()` grants site access by copying the extension with `host_permissions`, because headless Chromium cannot
   answer permission prompts. Use `launch({ siteAccess: false })` to test the no-access path.
-- Headless Chromium cannot test: the permission prompt itself, Chrome's "Allow user scripts" toggle (injection falls
-  back to an inline script), the debugging banner, or Chrome Web Store behaviour. Say so when a change depends on them.
+- Headless Chromium cannot test: the permission prompt itself, the debugging banner, or Chrome Web Store behaviour.
+  Say so when a change depends on them. "Allow user scripts" is off by default; `h.allowUserScripts()` switches it on
+  through chrome://extensions. Without it, JavaScript Inject rules do nothing (there is no inline-script fallback).
 - Runtime messages must come from an extension page (`h.message()`); the worker cannot message itself.
 
 ## Gotchas
@@ -125,6 +126,7 @@ Code must be understandable by someone new to the project without running it. Fu
 - `chrome.debugger` cannot be an optional permission; it stays in `permissions`.
 - The service worker can be stopped at any time. Never keep important state only in module variables; the
   `cache` in `background.js` is rebuilt by `getCache()`.
-- `Network.loadingFinished` only fires once the page reads the body, so recording also captures on a timer after
-  `responseReceived`.
+- Recording reads fetch/XHR bodies at the `Fetch` response stage (`interceptResponse` + `Fetch.getResponseBody`),
+  because `Network.getResponseBody` has no data until the page reads the body. `getResponseBody` waits for the
+  whole body, so `recordingPlan()` skips streams and lists bodies over 1 MB as too large without reading them.
 - Chrome APIs change. Check developer.chrome.com before relying on remembered limits or behaviour.

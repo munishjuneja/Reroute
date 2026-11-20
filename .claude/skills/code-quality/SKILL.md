@@ -29,7 +29,7 @@ Refactors change names and structure, never behaviour.
 1. Start from a green `npm test`. If it is not green, stop and report.
 2. Work one file at a time, in this order of risk: `core.js` (unit-tested, safest), `popup.js`, `options.js`,
    `page/bridge.js`, `page/interceptor.js`, `background.js`.
-3. Inside a file: add JSDoc and rename local variables first, then split long functions, then extract constants.    Files over 400 lines (`options.js`) are split into focused modules, e.g. `options/editor.js`,
+3. Inside a file: add JSDoc and rename local variables first, then split long functions, then extract constants. Files over 400 lines (`options.js`) are split into focused modules, e.g. `options/editor.js`,
    `options/import-export.js`; update the `<script>` tag and keep `options.js` as the entry point.
 4. **Do not rename anything persisted or shared across contexts**: storage keys (`rrConfig`, `rrSettings`,
    `rrPage`, `rrRuntime`, `rrLog`, `rrCaptures`, `rrRec`, `rrDebugTabs`), config and rule field names, rule

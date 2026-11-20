@@ -51,11 +51,11 @@ function stepsFor(choice) {
 function failureSummary(output) {
   const lines = output
     .split('\n')
-    .filter(line => line.trim() && !/^\s*at .*(node:|node_modules)/.test(line))
-    .filter(line => !/^[.X]+$/.test(line.trim()))
+    .filter((line) => line.trim() && !/^\s*at .*(node:|node_modules)/.test(line))
+    .filter((line) => !/^[.X]+$/.test(line.trim()))
     // The assertion message already shows actual vs expected; drop the error object dump.
     .filter(
-      line => !/^\s+(generatedMessage|code|actual|expected|operator|diff):|^\s+}$/.test(line),
+      (line) => !/^\s+(generatedMessage|code|actual|expected|operator|diff):|^\s+}$/.test(line),
     );
   const trimmed = lines.slice(0, MAX_FAILURE_LINES);
   if (lines.length > MAX_FAILURE_LINES) {

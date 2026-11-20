@@ -60,5 +60,5 @@ assert.equal(await page.evaluate(() => window.T), '{"ok":1}');
 
 ## What headless Chromium cannot check
 
-The permission prompt, Chrome's "Allow user scripts" toggle, the debugging banner, and anything in the Chrome Web
+The permission prompt, the debugging banner, and anything in the Chrome Web
 Store. When a change depends on one of these, say so and give the user the manual steps to check it in real Chrome.
