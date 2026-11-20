@@ -194,23 +194,12 @@ chrome.webNavigation.onCommitted.addListener(async (d) => {
   for (const r of c.injects) {
     if (!c.re[r.id]?.test(d.url)) continue;
     const target = { tabId: d.tabId, frameIds: [0] };
+    // JavaScript runs only through chrome.userScripts, registered in syncUserScripts(), so it
+    // needs the user's "Allow user scripts" opt-in. Without it, JavaScript inject rules do nothing.
+    if (r.inject.lang !== 'css' && !c.userScripts) continue;
     try {
-      if (r.inject.lang === 'css')
+      if (r.inject.lang === 'css') {
         await chrome.scripting.insertCSS({ target, css: r.inject.code, origin: 'USER' });
-      else if (!c.userScripts) {
-        // Fallback when user scripts are not allowed: inline <script>, which a strict page CSP may refuse.
-        await chrome.scripting.executeScript({
-          target,
-          world: 'MAIN',
-          injectImmediately: r.inject.runAt === 'document_start',
-          args: [r.inject.code],
-          func: (code) => {
-            const s = document.createElement('script');
-            s.textContent = code;
-            (document.head || document.documentElement).appendChild(s);
-            s.remove();
-          },
-        });
       }
       log({ ruleId: r.id, name: r.name, url: d.url, via: 'inject' });
     } catch {

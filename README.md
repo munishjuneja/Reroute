@@ -5,8 +5,9 @@ Charles-style request rules that run entirely in Chrome: no proxy process, no CA
 ## Install
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
-2. **Load unpacked** → select this folder.
-3. Optional, for script injection: open Reroute's **Details** and turn on **Allow user scripts**.
+2. **Load unpacked** → select the `extension/` folder.
+3. For JavaScript Inject rules: open Reroute's **Details** and turn on **Allow user scripts**. CSS Inject rules
+   and every other rule type work without it.
 4. Click the toolbar icon → **Open rule manager**.
 
 A few disabled example rules are created on first run.

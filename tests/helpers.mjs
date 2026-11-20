@@ -67,6 +67,15 @@ export async function launch({ siteAccess = true, viewport } = {}) {
       await p.goto(`chrome-extension://${id}/${file}`);
       return p;
     },
+    // Turns on Reroute's "Allow user scripts" switch on chrome://extensions, as a user would.
+    // Call before setConfig() so the worker registers inject rules with it on.
+    async allowUserScripts() {
+      const page = await ctx.newPage();
+      await page.goto(`chrome://extensions/?id=${id}`);
+      await page.locator('#allow-user-scripts').click();
+      await sleep(300);
+      await page.close();
+    },
     // Sends a runtime message the way the popup does (the worker cannot message itself).
     async message(msg) {
       const p = (h._msgPage ||= await h.extPage('popup.html'));

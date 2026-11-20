@@ -356,7 +356,7 @@ function renderEditor() {
       }
     </div>
     ${field('Code', `<textarea data-f="inject.code" spellcheck="false" style="min-height:220px">${esc(j.code)}</textarea>`)}
-    ${j.lang !== 'css' && !runtime.userScripts ? `<div class="note">For reliable script injection, turn on <b>Allow user scripts</b> for Reroute on its chrome://extensions details page. Until then scripts are added as inline tags, which pages with a strict CSP refuse.</div>` : ''}`;
+    ${j.lang !== 'css' && !runtime.userScripts ? `<div class="note">JavaScript runs only after you turn on <b>Allow user scripts</b> for Reroute on its chrome://extensions details page. CSS works without it.</div>` : ''}`;
   } else {
     h += `<details ${w.methods?.length || w.resourceTypes?.length || w.pageDomains?.length || w.gql ? 'open' : ''}><summary>Only when…</summary>
       ${field('Methods', input('when.methods', (w.methods || []).join(', '), { as: 'ulist', ph: 'any — e.g. GET, POST' }))}
@@ -992,6 +992,12 @@ chrome.storage.onChanged.addListener((c, area) => {
     }
   }
 });
+
+// Chrome has no event for the "Allow user scripts" switch. Re-apply when the user opens or comes back to
+// the rule manager, so JavaScript inject rules start working without editing a rule.
+const reapplyRules = () => chrome.runtime.sendMessage({ type: 'rr:apply' }).catch(() => {});
+window.addEventListener('focus', reapplyRules);
+reapplyRules();
 
 (async () => {
   const st = await chrome.storage.local.get(['rrConfig', 'rrSettings']);

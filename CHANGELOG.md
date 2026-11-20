@@ -24,6 +24,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- JavaScript Inject rules now run only through Chrome's user scripts API, so they need **Allow user scripts** on
+  Reroute's Details page. The inline-script fallback is gone. The rule manager re-applies rules when you return to
+  it, so turning the switch on takes effect without editing a rule.
 - Code formatted with Prettier.
 - Reroute no longer asks for the `declarativeNetRequestFeedback` permission. It only worked in unpacked builds,
   so Activity no longer lists redirect, header and block hits there.

@@ -218,3 +218,31 @@ test('extension pages cannot make network requests', async () => {
   );
   assert.equal(result, 'refused');
 });
+
+test('JavaScript inject rules run only once the user allows user scripts', async () => {
+  const site = await serve((req, res) => send(res, 200, 'text/html', '<p>page</p>'));
+  const h = await launch();
+  open.push(h, site);
+  const inject = rule({
+    type: 'inject',
+    match: site.url + '/*',
+    inject: { lang: 'js', runAt: 'document_idle', code: 'window.INJECTED = true;' },
+  });
+  const injectedAfterLoad = async () => {
+    const page = await h.ctx.newPage();
+    await page.goto(site.url + '/');
+    await sleep(300);
+    const injected = await page.evaluate(() => window.INJECTED === true);
+    await page.close();
+    return injected;
+  };
+
+  await h.setConfig(config([inject]));
+  assert.equal(await injectedAfterLoad(), false, 'no inline-script fallback without the opt-in');
+
+  await h.allowUserScripts();
+  const manager = await h.extPage('options.html'); // the user returns to the rule manager
+  for (let i = 0; i < 30 && !(await h.runtime()).userScripts; i++) await sleep(100);
+  await manager.close();
+  assert.equal(await injectedAfterLoad(), true);
+});

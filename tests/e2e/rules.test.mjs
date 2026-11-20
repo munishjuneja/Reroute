@@ -52,6 +52,7 @@ before(async () => {
   );
   R = site.url;
   h = await launch();
+  await h.allowUserScripts();
   await h.setConfig(
     config([
       rule({
