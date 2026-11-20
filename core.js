@@ -79,6 +79,11 @@ export function neededOrigins(config, settings) {
   return [...out];
 }
 
+// Enabled rules not pinned to one host: the reason neededOrigins asks for all sites.
+export function unpinnedRules(config, settings) {
+  return liveRules(config, settings).filter(r => !matchHost(r));
+}
+
 // What a rule does that a reviewer should know about. level 'high' = disabled on import.
 export function riskOf(rule) {
   const out = [];

@@ -1,6 +1,6 @@
 import {
   RESOURCE_TYPES, TYPE_LABELS, ACTION_KINDS, DEFAULT_SETTINGS, uid, compileRule, testUrl,
-  normalizeConfig, seedConfig, corsHeaders, sortedRules, riskOf, redactConfig, armAutoOff,
+  normalizeConfig, seedConfig, corsHeaders, sortedRules, riskOf, redactConfig, armAutoOff, unpinnedRules,
 } from './core.js';
 
 const $ = s => document.querySelector(s);
@@ -54,10 +54,20 @@ function renderTop() {
   const needs = runtime.needs || [];
   $('#perm').hidden = !needs.length || !settings.masterEnabled;
   const all = needs.includes('<all_urls>');
-  $('#permText').textContent = all
-    ? 'Rules are not applied yet. At least one enabled rule is not tied to a single site, so Reroute needs access to all sites.'
-    : 'Rules are not applied yet. Reroute needs access to: ' + needs.map(o => o.replace(/^\*:\/\/(\*\.)?|\/\*$/g, '')).join(', ') + '.';
+  if (all) {
+    // Name the rules that force all-sites access so the user can pin them to a host instead.
+    const wide = config ? unpinnedRules(config, settings) : [];
+    const shown = wide.slice(0, 5).map(r =>
+      `<button class="ghost" data-act="perm-rule" data-id="${esc(r.id)}" title="Open this rule">${esc(r.name || r.match || 'Untitled rule')}</button>`).join(' ');
+    const more = wide.length > 5 ? ` and ${wide.length - 5} more` : '';
+    $('#permText').innerHTML = `Rules are not applied yet. ${wide.length === 1 ? 'This enabled rule is' : 'These enabled rules are'} not tied to a single site, so Reroute needs access to all sites: ${shown}${more}. ` +
+      'To grant less, change the match to start with one host (e.g. <code>https://api.example.com/*</code>) or disable the rule.';
+  } else {
+    $('#permText').textContent = 'Rules are not applied yet. Reroute needs access to: ' + needs.map(o => o.replace(/^\*:\/\/(\*\.)?|\/\*$/g, '')).join(', ') + '.';
+  }
+  // Offer exactly one button: site-by-site when that covers the rules, all sites only when it is required.
   $('#permGrant').hidden = all;
+  $('#permAll').hidden = !all;
 }
 
 function renderSide() {
@@ -246,6 +256,7 @@ function moveRule(rule, dir) {
 const ACTIONS = {
   group: id => { sel.group = id; },
   rule: id => { sel.rule = id; },
+  'perm-rule': id => { tab = 'rules'; sel = { group: 'all', rule: id }; },
   'g-toggle': id => { const g = config.groups.find(g => g.id === id); g.enabled = !g.enabled; },
   'g-add': () => { const name = prompt('Group name'); if (!name) return false; const g = { id: uid('g'), profileId: config.activeProfile, name, enabled: true }; config.groups.push(g); sel.group = g.id; },
   'g-rename': () => { const g = config.groups.find(g => g.id === sel.group); const name = prompt('Group name', g.name); if (!name) return false; g.name = name; },
