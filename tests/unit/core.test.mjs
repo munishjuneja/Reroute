@@ -328,3 +328,14 @@ test('normalizeConfig replaces an unknown inject runAt so other inject rules kee
   assert.equal(rules[0].inject.runAt, 'document_idle');
   assert.equal(rules[1].inject.runAt, 'document_start');
 });
+
+test('normalizeConfig does not accept inherited object names as rule types', () => {
+  const { rules } = normalizeConfig({
+    rules: [
+      { type: 'constructor', match: 'https://a.example/' },
+      { type: 'mock', match: 'https://a.example/' },
+    ],
+  });
+  assert.equal(rules[0].type, 'map-remote');
+  assert.equal(rules[1].type, 'mock');
+});

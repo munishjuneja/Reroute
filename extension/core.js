@@ -1319,7 +1319,7 @@ function normalizeRule(rawRule, id, groups) {
     regex: !!rawRule.regex,
     name: rawRule.name || '',
     groupId: groups.some((group) => group.id === rawRule.groupId) ? rawRule.groupId : groups[0].id,
-    type: TYPE_LABELS[rawRule.type] ? rawRule.type : 'map-remote',
+    type: Object.hasOwn(TYPE_LABELS, rawRule.type) ? rawRule.type : 'map-remote',
     match: String(rawRule.match || '').trim(),
     when: normalizeConditions(rawRule.when),
     actions: (rawRule.actions || []).map((action) => normalizeAction(action)),
