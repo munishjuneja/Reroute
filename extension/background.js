@@ -196,7 +196,6 @@ chrome.debugger.onDetach.addListener(async src => {
 });
 
 chrome.debugger.onEvent.addListener((src, method, p) => {
-  if (method.startsWith('Network.')) { onNetwork(src, method, p).catch(() => {}); return; }
   if (method !== 'Fetch.requestPaused') return;
   onPaused(src, p).catch(() => chrome.debugger.sendCommand(src, 'Fetch.continueRequest', { requestId: p.requestId }).catch(() => {}));
 });
@@ -215,6 +214,10 @@ async function onPaused(src, p) {
     try { pageHost = new URL((await chrome.tabs.get(src.tabId)).url).hostname; } catch { /* unknown */ }
   }
   const ctx = { method: req.method, type: types, pageHost, body: req.postData || '' };
+  // While recording, fetch/XHR responses are read at the response stage, where the body is
+  // available even if the page never reads it.
+  const recReq = (p.resourceType === 'XHR' || p.resourceType === 'Fetch') && await isRec()
+    ? { tabId: src.tabId, url, method: req.method, postData: req.postData || '' } : null;
 
   let terminal = null;
   const rewrites = [];
@@ -223,7 +226,11 @@ async function onPaused(src, p) {
     if (r.type === 'rewrite') rewrites.push(r);
     else if (!terminal) terminal = r;
   }
-  if (!terminal && !rewrites.length) return send('Fetch.continueRequest', { requestId });
+  if (!terminal && !rewrites.length) {
+    if (!recReq) return send('Fetch.continueRequest', { requestId });
+    pending.set(requestId, { acts: [], rec: recReq });
+    return send('Fetch.continueRequest', { requestId, interceptResponse: true });
+  }
   const hit = r => log({ ruleId: r.id, name: r.name, url, via: 'full', tabId: src.tabId });
 
   if (terminal?.type === 'block') { hit(terminal); return send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }); }
@@ -241,6 +248,7 @@ async function onPaused(src, p) {
         { name: 'Access-Control-Allow-Methods', value: '*' },
         { name: 'Access-Control-Allow-Headers', value: hdrGet(req.headers, 'access-control-request-headers') || '*' });
     }
+    if (recReq) recordCapture(recReq, Number(r.status) || 200, r.contentType || 'text/plain', r.body || '', !!r.base64);
     return send('Fetch.fulfillRequest', { requestId, responseCode: Number(r.status) || 200, responseHeaders: headers, body: responseB64(r) });
   }
 
@@ -273,7 +281,7 @@ async function onPaused(src, p) {
     args.headers = headers;
   }
   const respActs = acts.filter(a => ['resp-header', 'resp-body', 'status'].includes(a.kind));
-  if (respActs.length) { pending.set(requestId, respActs); args.interceptResponse = true; }
+  if (respActs.length || recReq) { pending.set(requestId, { acts: respActs, rec: recReq }); args.interceptResponse = true; }
   const delay = Math.max(0, ...acts.filter(a => a.kind === 'delay').map(a => Number(a.value) || 0));
   if (delay) await sleep(delay);
   return send('Fetch.continueRequest', args);
@@ -289,31 +297,42 @@ function replaceBody(text, acts) {
 
 async function onResponse(send, p) {
   const requestId = p.requestId;
-  const acts = pending.get(requestId);
+  let { acts = [], rec: recReq = null } = pending.get(requestId) || {};
   pending.delete(requestId);
-  if (!acts || p.responseErrorReason) return send('Fetch.continueRequest', { requestId });
+  const ctype = ((p.responseHeaders || []).find(h => h.name.toLowerCase() === 'content-type')?.value || '').toLowerCase();
+  // Streams may never end, and getResponseBody waits for the whole body: pass them through unrecorded.
+  if (/event-stream|ndjson|multipart\/x-mixed-replace/.test(ctype)) recReq = null;
+  if ((!acts.length && !recReq) || p.responseErrorReason) return send('Fetch.continueRequest', { requestId });
   let headers = (p.responseHeaders || []).slice();
   for (const a of acts) if (a.kind === 'resp-header' && a.name) headers = setHdr(headers, a.name, a.value);
   const st = acts.filter(a => a.kind === 'status' && Number(a.value)).pop();
   const bodyActs = acts.filter(a => a.kind === 'resp-body');
   const code = p.responseStatusCode;
   const noBody = (code >= 300 && code < 400) || code === 204;
-  if (noBody || (!bodyActs.length && !st)) {
+  if (noBody || (!bodyActs.length && !st && !recReq)) {
     return send('Fetch.continueResponse', { requestId, responseCode: st && !(code >= 300 && code < 400) ? Number(st.value) : code, responseHeaders: headers });
   }
   const got = await send('Fetch.getResponseBody', { requestId });
-  let body = got.body;
+  const status = st ? Number(st.value) : code;
+  let body = got.body, text = null;
   if (bodyActs.length) {
-    body = utf8ToB64(replaceBody(got.base64Encoded ? b64ToUtf8(got.body) : got.body, bodyActs));
-    headers = setHdr(setHdr(headers, 'content-length', ''), 'content-encoding', '');
+    text = replaceBody(got.base64Encoded ? b64ToUtf8(got.body) : got.body, bodyActs);
+    body = utf8ToB64(text);
   } else if (!got.base64Encoded) body = utf8ToB64(got.body);
-  return send('Fetch.fulfillRequest', { requestId, responseCode: st ? Number(st.value) : code, responseHeaders: headers, body });
+  if (recReq) {
+    const mime = (headers.find(h => h.name.toLowerCase() === 'content-type')?.value || '').split(';')[0].trim();
+    if (text !== null) recordCapture(recReq, status, mime, text, false);
+    else if (got.base64Encoded && /^text\/|json|xml|javascript|graphql/i.test(mime)) recordCapture(recReq, status, mime, b64ToUtf8(got.body || ''), false);
+    else recordCapture(recReq, status, mime, got.body || '', !!got.base64Encoded);
+  }
+  // getResponseBody returns the decoded body, so the original length and encoding no longer apply.
+  headers = setHdr(setHdr(headers, 'content-length', ''), 'content-encoding', '');
+  return send('Fetch.fulfillRequest', { requestId, responseCode: status, responseHeaders: headers, body });
 }
 
 // ---------- recording (needs Full interception on the tab) ----------
 
 let rec = null, capBuf = null, capTimer = null;
-const netReqs = new Map();
 const isRec = async () => { if (rec === null) rec = !!(await chrome.storage.session.get(K.rec))[K.rec]; return rec; };
 async function setRec(on) { rec = on; await chrome.storage.session.set({ [K.rec]: on }); }
 
@@ -327,32 +346,14 @@ async function addCapture(c) {
   capTimer = setTimeout(() => chrome.storage.session.set({ [K.caps]: capBuf }), 250);
 }
 
-async function onNetwork(src, method, p) {
-  if (!(await isRec())) return;
-  const key = src.tabId + ':' + p.requestId;
-  if (method === 'Network.requestWillBeSent') {
-    if ((p.type === 'XHR' || p.type === 'Fetch') && !netReqs.has(key)) {
-      netReqs.set(key, { url: p.request.url, method: p.request.method, postData: p.request.postData || '' });
-    }
-  } else if (method === 'Network.responseReceived') {
-    const r = netReqs.get(key);
-    if (r) { r.status = p.response.status; r.mime = p.response.mimeType || ''; }
-  } else if (method === 'Network.loadingFailed') {
-    netReqs.delete(key);
-  } else if (method === 'Network.loadingFinished') {
-    const r = netReqs.get(key);
-    netReqs.delete(key);
-    if (!r || r.status === undefined) return;
-    let got;
-    try { got = await chrome.debugger.sendCommand(src, 'Network.getResponseBody', { requestId: p.requestId }); } catch { return; }
-    const tooLarge = (got.body || '').length > 1_000_000;
-    let gql = '';
-    try { const j = JSON.parse(r.postData); gql = (Array.isArray(j) ? j[0] : j)?.operationName || ''; } catch { /* not GraphQL */ }
-    addCapture({
-      id: uid('c'), t: Date.now(), tabId: src.tabId, url: r.url, method: r.method, status: r.status, mime: r.mime,
-      body: tooLarge ? '' : got.body || '', base64: !!got.base64Encoded, tooLarge, gql,
-    });
-  }
+function recordCapture(r, status, mime, body, base64) {
+  const tooLarge = body.length > 1_000_000;
+  let gql = '';
+  try { const j = JSON.parse(r.postData); gql = (Array.isArray(j) ? j[0] : j)?.operationName || ''; } catch { /* not GraphQL */ }
+  addCapture({
+    id: uid('c'), t: Date.now(), tabId: r.tabId, url: r.url, method: r.method, status, mime,
+    body: tooLarge ? '' : body, base64, tooLarge, gql,
+  }).catch(() => {});
 }
 
 // ---------- events ----------

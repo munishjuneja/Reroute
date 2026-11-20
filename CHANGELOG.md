@@ -10,6 +10,11 @@ All notable changes to this project are documented here. The format follows
 
 - Test suite (unit and end-to-end), lint and formatting setup, contributor and agent guides.
 
+### Fixed
+
+- Recording now captures responses whose body the page never reads, such as error responses where only the
+  status is checked.
+
 ### Changed
 
 - Code formatted with Prettier.

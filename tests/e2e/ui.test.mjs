@@ -13,6 +13,7 @@ const groups = [
 
 before(async () => {
   site = await serve((req, res, u) => {
+    if (u.pathname === '/api/stream') { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.write('data: 1\n\n'); return; }
     if (u.pathname.startsWith('/api/')) return send(res, u.pathname.includes('fail') ? 500 : 200, 'application/json', JSON.stringify({ from: 'server', path: u.pathname + u.search }));
     send(res, 200, 'text/html', `<body>site<script>
       window.go = () => Promise.all([
@@ -118,6 +119,22 @@ test('recording captures API responses and Save as mock replays them', async () 
   const out = await page.evaluate(() => window.go());
   assert.deepEqual(out, [{ from: 'server', path: '/api/cart?x=1' }, 500, { from: 'mock' }]);
   await opt.close();
+  await page.close();
+});
+
+test('recording passes never-ending streams through instead of holding them', async () => {
+  const page = await h.ctx.newPage();
+  await page.goto(site.url + '/');
+  const res = await h.message({ type: 'rr:rec-toggle', tabId: await h.tabId(site.url) });
+  assert.equal(res.on, true);
+  await page.bringToFront();
+  await page.reload();
+  const status = await page.evaluate(() => Promise.race([
+    fetch('/api/stream').then(r => r.status),
+    new Promise(r => setTimeout(() => r('timed out'), 3000)),
+  ]));
+  assert.equal(status, 200);
+  await h.message({ type: 'rr:rec-toggle', tabId: await h.tabId(site.url) });
   await page.close();
 });
 
